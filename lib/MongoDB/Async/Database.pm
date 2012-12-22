@@ -15,16 +15,137 @@
 #
 
 package MongoDB::Async::Database;
-our $VERSION = '0.45';
+{
+  $MongoDB::Async::Database::VERSION = '0.503.2';
+}
+
 
 # ABSTRACT: A Mongo Database
 
+use Moose;
 use MongoDB::Async::GridFS;
+use Carp 'carp';
+
+has _client => ( 
+    is       => 'ro',
+    isa      => 'MongoDB::Async::MongoClient',
+    required => 1,
+);
+
+has name => (
+    is       => 'ro',
+    isa      => 'Str',
+    required => 1,
+);
+
+no strict 'refs';
+sub AUTOLOAD {
+    my ($self) =@_;
+    our $AUTOLOAD;
+
+    my $coll = $AUTOLOAD;
+    $coll =~ s/.*:://;
+	
+	my $sub = eval q/ sub {  $_[0]->get_collection('/.$coll.q/') } /;
+	
+	*{$AUTOLOAD} = $sub;
+	
+    return $sub->($self);
+}
 use strict;
+
+
+
+
+sub collection_names {
+    my ($self) = @_;
+    my $it = $self->get_collection('system.namespaces')->query({});
+    return map {
+        substr($_, length($self->{name}) + 1)
+    } map { $_->{name} } $it->all;
+}
+
+
+sub get_collection {
+    my ($self, $collection_name) = @_;
+    return MongoDB::Async::Collection->new(
+        _database => $self,
+        name      => $collection_name,
+    );
+}
+
+
+sub get_gridfs {
+    my ($self, $prefix) = @_;
+    $prefix = "fs" unless $prefix;
+
+    return MongoDB::Async::GridFS->new(
+        _database => $self,
+        prefix => $prefix
+    );
+}
+
+
+sub drop {
+    my ($self) = @_;
+    return $self->run_command({ 'dropDatabase' => 1 });
+}
+
+
+sub last_error {
+    my ($self, $options) = @_;
+
+    my $cmd = Tie::IxHash->new("getlasterror" => 1);
+    if ($options) {
+        $cmd->Push("w", $options->{w})                  if $options->{w};
+        $cmd->Push("wtimeout", $options->{wtimeout})    if $options->{wtimeout};
+        $cmd->Push("fsync", $options->{fsync})          if $options->{fsync};
+        $cmd->Push("j", 1)                              if $options->{j};
+    }
+                                                        
+    return $self->run_command($cmd);
+}
+
+
+sub run_command {
+    my ($self, $command) = @_;
+    my $obj = $self->get_collection('$cmd')->find_one($command);
+    return $obj if $obj->{ok};
+    $obj->{'errmsg'};
+}
+
+
+sub eval {
+    my ($self, $code, $args) = @_;
+
+    my $cmd = tie(my %hash, 'Tie::IxHash');
+    %hash = ('$eval' => $code,
+             'args' => $args);
+
+    my $result = $self->run_command($cmd);
+    if (ref $result eq 'HASH' && exists $result->{'retval'}) {
+        return $result->{'retval'};
+    }
+    else {
+        return $result;
+    }
+}
+
+__PACKAGE__->meta->make_immutable;
+
+1;
+
+__END__
+
+=pod
 
 =head1 NAME
 
-MongoDB::Async::Database - A Mongo database
+MongoDB::Async::Database - A Mongo Database
+
+=head1 VERSION
+
+version 0.503.2
 
 =head1 SYNOPSIS
 
@@ -36,6 +157,10 @@ The MongoDB::Async::Database class accesses to a database.
 You can also access databases with the L<MongoDB::Async::Connection/"get_database($name)">
 method.
 
+=head1 NAME
+
+MongoDB::Async::Database - A Mongo database
+
 =head1 SEE ALSO
 
 Core documentation on databases: L<http://dochub.mongodb.org/core/databases>.
@@ -46,37 +171,6 @@ Core documentation on databases: L<http://dochub.mongodb.org/core/databases>.
 
 The name of the database.
 
-=cut
-sub name {shift->{name}};
-
-
-sub new {
-	my $name = shift;
-	
-	# fuck moose shit, i`ll do it myself
-	my $self;
-	if(ref($_[0]) eq 'HASH'){
-		$self = $_[0];
-	}else{
-		$self = {@_};
-	}
-	
-	bless $self, $name;
-}
-
-
-
-sub AUTOLOAD {
-    our $AUTOLOAD;
-
-    my $coll = $AUTOLOAD;
-    $coll =~ s/.*:://;
-
-    return shift->get_collection($coll);
-}
-
-
-
 =head1 METHODS
 
 =head2 collection_names
@@ -85,31 +179,12 @@ sub AUTOLOAD {
 
 Returns the list of collections in this database.
 
-=cut
-
-sub collection_names {
-    my ($self) = @_;
-    return map {
-        substr($_, length($self->{name}) + 1)
-    } map { $_->{name} } $self->get_collection('system.namespaces')->query({})->all;
-}
-
 =head2 get_collection ($name)
 
     my $collection = $database->get_collection('foo');
 
 Returns a L<MongoDB::Async::Collection> for the collection called C<$name> within this
 database.
-
-=cut
-
-sub get_collection {
-    my ($self, $collection_name) = @_;
-    return MongoDB::Async::Collection->new(
-        _database => $self,
-        name      => $collection_name,
-    );
-}
 
 =head2 get_gridfs ($prefix?)
 
@@ -121,30 +196,11 @@ Default prefix is "fs", making C<$grid-E<gt>files> "fs.files" and C<$grid-E<gt>c
 
 See L<MongoDB::Async::GridFS> for more information.
 
-=cut
-
-sub get_gridfs {
-    my ($self, $prefix) = @_;
-    $prefix = 'fs' unless $prefix;
-
-    return MongoDB::Async::GridFS->new(
-        _database => $self,
-        prefix => $prefix
-    );
-}
-
 =head2 drop
 
     $database->drop;
 
 Deletes the database.
-
-=cut
-
-sub drop {
-    return shift->run_command({ 'dropDatabase' => 1 });
-}
-
 
 =head2 last_error($options?)
 
@@ -174,6 +230,10 @@ C<w> copies cannot be made.
 =item fsync
 
 If true, the database will fsync to disk before returning.
+
+=item j
+
+If true, awaits the journal commit before returning. If the server is running without journaling, it returns immediately, and successfully.
 
 =back
 
@@ -250,21 +310,6 @@ occurred).
 
 See L<MongoDB::Async::Connection/w> for more information.
 
-=cut
-
-sub last_error {
-    my ($self, $options) = @_;
-
-    my $cmd = Tie::IxHash->new('getlasterror' => 1);
-    
-        $cmd->Push('w', $options->{w}) if $options->{w};
-        $cmd->Push('wtimeout', $options->{wtimeout}) if $options->{wtimeout};
-        $cmd->Push('fsync', $options->{fsync}) if $options->{fsync};
-
-    return $self->run_command($cmd);
-}
-
-
 =head2 run_command ($command)
 
     my $result = $database->run_command({ some_command => 1 });
@@ -281,16 +326,6 @@ L<MongoDB::Async::Examples/"DATABASE COMMANDS"> section.
 See also core documentation on database commands:
 L<http://dochub.mongodb.org/core/commands>.
 
-=cut
-
-sub run_command {
-    my ($self, $command) = @_;
-    my $obj = $self->get_collection('$cmd')->find_one($command);
-    return $obj if $obj->{ok};
-    $obj->{'errmsg'};
-}
-
-
 =head2 eval ($code, $args?)
 
     my $result = $database->eval('function(x) { return "hello, "+x; }', ["world"]);
@@ -305,27 +340,30 @@ must be a JavaScript function. C<$args> is an array of parameters that will be
 passed to the function.  For more examples of using eval see
 L<http://www.mongodb.org/display/DOCS/Server-side+Code+Execution#Server-sideCodeExecution-Using{{db.eval%28%29}}>.
 
+=head1 AUTHORS
+
+=over 4
+
+=item *
+
+Florian Ragwitz <rafl@debian.org>
+
+=item *
+
+Kristina Chodorow <kristina@mongodb.org>
+
+=item *
+
+Mike Friedman <mike.friedman@10gen.com>
+
+=back
+
+=head1 COPYRIGHT AND LICENSE
+
+This software is Copyright (c) 2012 by 10gen, Inc..
+
+This is free software, licensed under:
+
+  The Apache License, Version 2.0, January 2004
+
 =cut
-
-sub eval {
-    my ($self, $code, $args) = @_;
-
-    my $cmd = tie(my %hash, 'Tie::IxHash');
-    %hash = ('$eval' => $code,
-             'args' => $args);
-
-    my $result = $self->run_command($cmd);
-    if (ref $result eq 'HASH' && exists $result->{'retval'}) {
-        return $result->{'retval'};
-    }
-    else {
-        return $result;
-    }
-}
-
-
-1;
-
-=head1 AUTHOR
-
-  Kristina Chodorow <kristina@mongodb.org>

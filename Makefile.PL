@@ -3,21 +3,31 @@ use warnings;
 use lib 'ext';
 use inc::Module::Install;
 
-
 name 'MongoDB-Async';
-perl_version '5.8.8';
+perl_version '5.8.4';
 author 'Florian Ragwitz <rafl@debian.org>';
 author 'Kristina Chodorow <kristina@10gen.com>';
-author 'Sergey Gorelov <nyaknyan@gmail.com>';
+author 'Mike Friedman <mike.friedman@10gen.com>';
 license 'Apache';
 all_from 'lib/MongoDB/Async.pm';
 
-requires 'Any::Moose';
+foreach (@ARGV){
+    next unless($_ eq '--ssl');
+    cc_lib_links('ssl', 'crypto');
+    cc_optimize_flags("-DMONGO_SSL");
+    last;
+}
+
+requires 'Module::Install';
+requires 'Moose';
+requires 'EV';
+requires 'Coro';
+requires 'Coro::EV';
+requires 'Devel::GlobalDestruction';
+requires 'Scalar::Util';
 # C::M::Modifiers isn't always needed. It'll be used only if Any::Moose decides
 # to use Mouse instead of Moose. We depend on it anyway to make sure it's there
 # when it's needed.
-requires 'Coro';
-requires 'EV';
 requires 'Class::Method::Modifiers';
 requires 'Digest::MD5';
 requires 'Tie::IxHash';
@@ -25,6 +35,7 @@ requires 'DateTime';
 requires 'XSLoader';
 requires 'boolean';
 test_requires 'Test::Exception';
+test_requires 'Test::Warn';
 test_requires 'Tie::IxHash';
 test_requires 'DateTime';
 test_requires 'boolean';
@@ -34,12 +45,13 @@ test_requires 'FileHandle';
 test_requires 'JSON';
 test_requires 'File::Temp' => '0.17';
 test_requires 'Try::Tiny';
+test_requires 'DateTime::Tiny';
 
 mongo;
 
 no_index directory => 'ext';
 
-repository 'git://github.com/mongodb/mongo-perl-driver.git';
+# repository 'git://github.com/mongodb/mongo-perl-driver.git';
 
 
 if ($Config::Config{useithreads}) {

@@ -2,13 +2,16 @@ use strict;
 use warnings;
 use Test::More;
 use Test::Exception;
+use Test::Warn;
 
+use utf8;
 use Data::Types qw(:float);
 use Tie::IxHash;
 use Encode qw(encode decode);
 use MongoDB::Async::Timestamp; # needed if db is being run as master
 
 use MongoDB::Async;
+use MongoDB::Async::BSON;
 
 my $conn;
 eval {
@@ -16,14 +19,14 @@ eval {
     if (exists $ENV{MONGOD}) {
         $host = $ENV{MONGOD};
     }
-    $conn = MongoDB::Async::Connection->new(host => $host);
+    $conn = MongoDB::Async::MongoClient->new(host => $host, ssl => $ENV{MONGO_SSL});
 };
 
 if ($@) {
     plan skip_all => $@;
 }
 else {
-    plan tests => 121;
+    plan tests => 140;
 }
 
 my $db = $conn->get_database('test_database');
@@ -62,6 +65,15 @@ $coll->update({ _id => $id }, {
     and => [qw/an array reference/],
 });
 is($coll->count, 1);
+# rename 
+my $newcoll = $coll->rename('test_collection.rename');
+is($newcoll->name, 'test_collection.rename', 'rename');
+is($coll->count, 0, 'rename');
+is($newcoll->count, 1, 'rename');
+$coll = $newcoll->rename('test_collection');
+is($coll->name, 'test_collection', 'rename');
+is($coll->count, 1, 'rename');
+is($newcoll->count, 0, 'rename');
 
 is($coll->count({ mongo => 'programmer' }), 0, 'count = 0');
 is($coll->count({ mongo => 'hacker'     }), 1, 'count = 1');
@@ -90,19 +102,16 @@ for (my $i=0; $i<10; $i++) {
 }
 
 $coll->drop;
-
 ok(!$coll->get_indexes, 'no indexes yet');
 
 my $indexes = Tie::IxHash->new(foo => 1, bar => 1, baz => 1);
 my $ok = $coll->ensure_index($indexes);
-
 ok(!defined $ok);
 my $err = $db->last_error;
 is($err->{ok}, 1);
 is($err->{err}, undef);
 
 $indexes = Tie::IxHash->new(foo => 1, bar => 1);
-
 $ok = $coll->ensure_index($indexes);
 ok(!defined $ok);
 $coll->insert({foo => 1, bar => 1, baz => 1, boo => 1});
@@ -190,11 +199,12 @@ $coll->insert({foo => "\x9F" });
 my $utfblah = $coll->find_one;
 is(ord($utfblah->{'foo'}), 159, 'translate non-utf8 to utf8 char');
 
+$MongoDB::Async::BSON::utf8_flag_on = 0;
 $coll->drop;
 $coll->insert({"\x9F" => "hi"});
 $utfblah = $coll->find_one;
 is($utfblah->{chr(159)}, "hi", 'translate non-utf8 key');
-
+$MongoDB::Async::BSON::utf8_flag_on = 1;
 
 $coll->drop;
 my $keys = tie(my %idx, 'Tie::IxHash');
@@ -452,12 +462,6 @@ SKIP: {
     is($result->{'x'}, 4);
 }
 
-# autoload
-{
-    my $coll1 = $conn->foo->bar->baz;
-    is($coll1->name, "bar.baz");
-    is($coll1->full_name, "foo.bar.baz");
-}
 
 # ns hack
 # check insert utf8
@@ -492,10 +496,109 @@ SKIP: {
     $coll->drop;
 }
 
+# sparse indexes
+{
+    for (1..10) {
+        $coll->insert({x => $_, y => $_}, {safe => 1});
+        $coll->insert({x => $_}, {safe => 1});
+    }
+    is($coll->count, 20);
+
+    $coll->ensure_index({"y" => 1}, {"unique" => 1, "name" => "foo"});
+    my $index = $coll->_database->get_collection("system.indexes")->find_one({"name" => "foo"});
+    ok(!$index);
+
+    $coll->ensure_index({"y" => 1}, {"unique" => 1, "sparse" => 1, "name" => "foo"});
+    $index = $coll->_database->get_collection("system.indexes")->find_one({"name" => "foo"});
+    ok($index);
+
+    $coll->drop;
+}
+
+# utf8 test, croak when null key is inserted
+{
+    $MongoDB::Async::BSON::utf8_flag_on = 1;
+    my $ok = 0;
+    my $kanji = "漢\0字";
+    utf8::encode($kanji);
+    eval{
+     $ok = $coll->insert({ $kanji => 1});
+    };
+    is($ok,0,"Insert key with Null Char Operation Failed");
+    is($coll->count, 0, "Insert key with Null Char in Key Failed");
+    $coll->drop;
+    $ok = 0;
+    my $kanji_a = "漢\0字";
+    my $kanji_b = "漢\0字中";
+    my $kanji_c = "漢\0字国";
+    utf8::encode($kanji_a);
+    utf8::encode($kanji_b);
+    utf8::encode($kanji_c);
+    eval {
+     $ok = $coll->batch_insert([{ $kanji_a => "some data"} , { $kanji_b => "some more data"}, { $kanji_c => "even more data"}]);
+    };
+    is($ok,0, "batch_insert key with Null Char in Key Operation Failed");
+    is($coll->count, 0, "batch_insert key with Null Char in Key Failed");
+    $coll->drop;
+
+    #test ixhash
+    my $hash = Tie::IxHash->new("f\0f" => 1);
+    eval {
+     $ok = $coll->insert($hash);
+    };
+    is($ok,0, "ixHash Insert key with Null Char in Key Operation Failed");
+    is($coll->count, 0, "ixHash key with Null Char in Key Operation Failed");
+    my $tied = $coll->find_one;
+    $coll->drop;
+}
+
+# findAndModify
+{
+    $coll->insert( { name => "find_and_modify_test", value => 42 } );
+    $coll->find_and_modify( { query => { name => "find_and_modify_test" }, update => { '$set' => { value => 43 } } } );
+    my $doc = $coll->find_one( { name => "find_and_modify_test" } );
+    is( $doc->{value}, 43 );
+
+    $coll->drop;
+
+    $coll->insert( { name => "find_and_modify_test", value => 46 } );
+    my $new = $coll->find_and_modify( { query  => { name => "find_and_modify_test" }, 
+                                        update => { '$set' => { value => 57 } },
+                                        new    => 1 } );
+
+    is ( $new->{value}, 57 );
+
+    $coll->drop;
+
+    my $nothing = $coll->find_and_modify( { query => { name => "does not exist" }, update => { name => "barf" } } );
+
+    is ( $nothing, undef );
+
+    $coll->drop;
+}
+
+# aggregate 
+{
+    $coll->batch_insert( [ { wanted => 1, score => 56 },
+                           { wanted => 1, score => 72 },
+                           { wanted => 1, score => 96 },
+                           { wanted => 1, score => 32 },
+                           { wanted => 1, score => 61 },
+                           { wanted => 1, score => 33 },
+                           { wanted => 0, score => 1000 } ] );
+
+    my $res = $coll->aggregate( [ { '$match'   => { wanted => 1 } },
+                                  { '$group'   => { _id => 1, 'avgScore' => { '$avg' => '$score' } } } ] );
+
+    is( ref( $res ), ref [ ] );
+    ok $res->[0]{avgScore} < 59;
+    ok $res->[0]{avgScore} > 57;
+
+}
 
 END {
     if ($conn) {
-        $conn->foo->drop;
+        $conn->get_database( 'foo' )->drop;
     }
     if ($db) {
         $db->drop;

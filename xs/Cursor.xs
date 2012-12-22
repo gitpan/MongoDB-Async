@@ -20,101 +20,106 @@
 static int
 cursor_free (pTHX_ SV *sv, MAGIC *mg)
 {
-    mongo_cursor *cursor;
+	mongo_cursor *cursor;
 
-    PERL_UNUSED_ARG(sv);
+	PERL_UNUSED_ARG(sv);
 
-    cursor = (mongo_cursor *)mg->mg_ptr;
+	cursor = (mongo_cursor *)mg->mg_ptr;
 
-    if (cursor) {
-        if (cursor->buf.start) {
-          Safefree(cursor->buf.start);
-        }
+	if (cursor) {
+		if (cursor->buf.start) {
+		  Safefree(cursor->buf.start);
+		}
 
-        Safefree(cursor);
-    }
+		Safefree(cursor);
+	}
 
-    mg->mg_ptr = NULL;
+	mg->mg_ptr = NULL;
 
-    return 0;
+	return 0;
 }
 
 static int
 cursor_clone (pTHX_ MAGIC *mg, CLONE_PARAMS *params)
 {
-    mongo_cursor *cursor, *new_cursor;
-    size_t buflen;
+	mongo_cursor *cursor, *new_cursor;
+	size_t buflen;
 
-    PERL_UNUSED_ARG (params);
+	PERL_UNUSED_ARG (params);
 
-    cursor = (mongo_cursor *)mg->mg_ptr;
+	cursor = (mongo_cursor *)mg->mg_ptr;
 
-    Newx(new_cursor, 1, mongo_cursor);
-    Copy(cursor, new_cursor, 1, mongo_cursor);
+	Newx(new_cursor, 1, mongo_cursor);
+	Copy(cursor, new_cursor, 1, mongo_cursor);
 
-    buflen = cursor->buf.end - cursor->buf.start;
-    Newx(new_cursor->buf.start, buflen, char);
-    Copy(cursor->buf.start, new_cursor->buf.start, buflen, char);
-    new_cursor->buf.end = new_cursor->buf.start + buflen;
-    new_cursor->buf.pos =
+	buflen = cursor->buf.end - cursor->buf.start;
+	Newx(new_cursor->buf.start, buflen, char);
+	Copy(cursor->buf.start, new_cursor->buf.start, buflen, char);
+	new_cursor->buf.end = new_cursor->buf.start + buflen;
+	new_cursor->buf.pos =
 	new_cursor->buf.start + (cursor->buf.pos - cursor->buf.start);
 
-    mg->mg_ptr = (char *)new_cursor;
+	mg->mg_ptr = (char *)new_cursor;
 
-    return 0;
+	return 0;
 }
 
 MGVTBL cursor_vtbl = {
-    NULL,
-    NULL,
-    NULL,
-    NULL,
-    cursor_free,
+	NULL,
+	NULL,
+	NULL,
+	NULL,
+	cursor_free,
 #if MGf_COPY
-    NULL,
+	NULL,
 #endif
 #if MGf_DUP
-    cursor_clone,
+	cursor_clone,
 #endif
 #if MGf_LOCAL
-    NULL,
+	NULL,
 #endif
 };
 
 static mongo_cursor* get_cursor(SV *self);
 static int has_next(SV *self, mongo_cursor *cursor, int limit);
+static SV * next(SV *self, mongo_cursor *cursor, int limit );
+
 static void kill_cursor(SV *self);
 
 static mongo_cursor* get_cursor(SV *self) {
 	mongo_cursor *cursor = (mongo_cursor*)perl_mongo_get_ptr_from_instance(self, &cursor_vtbl);
+	// printf("----------started %d \n", cursor->started_iterating);
 	if(!cursor->started_iterating){
 		perl_mongo_call_method(self, "_do_query", G_DISCARD, 0);
 		
 		mongo_link_hear(self);
 		
 		cursor->started_iterating = 1;
-		perl_mongo_call_method(self, "started_iterating", G_DISCARD, 1, &PL_sv_yes);
+		hv_store(SvRV(self), "started_iterating", strlen("started_iterating"), newSViv(1), 0);;
 	};
 	return cursor;
 }
 
+
+
 static int has_next(SV *self, mongo_cursor *cursor, int limit) {
-  SV *link, *ns,  *response_to;
+  SV *link, *ns, *request_id, *response_to;
   mongo_msg_header header;
   buffer buf;
   int size, heard;
-
+  
   if ((limit > 0 && cursor->at >= limit) || 
-      cursor->num == 0 ||
-      (cursor->at == cursor->num && cursor->cursor_id == 0)) {
-    return 0;
+	  cursor->num == 0 ||
+	  (cursor->at == cursor->num && cursor->cursor_id == 0)) {
+	return 0;
   }
   else if (cursor->at < cursor->num) {
-    return 1;
+	return 1;
   }
 
 
-  link = perl_mongo_call_reader (self, "_connection");
+  link = perl_mongo_call_reader (self, "_client");
   ns = perl_mongo_call_reader (self, "_ns");
 
   // we have to go and check with the db
@@ -124,12 +129,12 @@ static int has_next(SV *self, mongo_cursor *cursor, int limit) {
   buf.end = buf.start + size;
 
   response_to = perl_mongo_call_reader(self, "_request_id");
+  request_id = get_sv("MongoDB::Async::Cursor::_request_id", GV_ADD);
 
   CREATE_RESPONSE_HEADER(buf, SvPV_nolen(ns), SvIV(response_to), OP_GET_MORE);
 
   // change this cursor's request id so we can match the response
-  perl_mongo_call_method(self, "_request_id", G_DISCARD, 1, newSViv(request_id));
-  
+  perl_mongo_call_method(self, "_request_id", G_DISCARD, 1, request_id);
 
   perl_mongo_serialize_int(&buf, limit);
   perl_mongo_serialize_long(&buf, cursor->cursor_id);
@@ -138,9 +143,9 @@ static int has_next(SV *self, mongo_cursor *cursor, int limit) {
 
   // fails if we're out of elems
   if(mongo_link_say(link, &buf) == -1) {
-    Safefree(buf.start);
-    die("can't get db response, not connected");
-    return 0;
+	Safefree(buf.start);
+	die("can't get db response, not connected");
+	return 0;
   }
 
   Safefree(buf.start);
@@ -152,35 +157,38 @@ static int has_next(SV *self, mongo_cursor *cursor, int limit) {
   return heard > 0;
 }
 
-
 static SV * next(SV *self, mongo_cursor *cursor, int limit ) {
 	if ( has_next( self, cursor, limit ) ) {
+		  
+		SV *ret = perl_mongo_bson_to_sv(&cursor->buf);
 		
-        SV *ret = perl_mongo_bson_to_sv(&cursor->buf);
-        cursor->at++;
+		cursor->at++;
+		
+		if (cursor->num == 1 &&
+			  hv_exists((HV*)SvRV(ret), "$err", strlen("$err"))) {
+			SV **err = 0, **code = 0;
 
-        if (cursor->num == 1 &&
-              hv_exists((HV*)SvRV(ret), "$err", 4)) {
-            SV **err = 0, **code = 0;
-
-            err = hv_fetch((HV*)SvRV(ret), "$err", 4, 0);
-            code = hv_fetch((HV*)SvRV(ret), "code", 4, 0);
-            
-            if (code && SvIOK(*code) &&
-                (SvIV(*code) == 10107 || SvIV(*code) == 13435 || SvIV(*code) == 13436)) {
-              set_disconnected(perl_mongo_call_reader (self, "_connection"));
-            }
-            
-            croak("query error: %s", SvPV_nolen(*err));
-          }
+			err = hv_fetch((HV*)SvRV(ret), "$err", strlen("$err"), 0);
+			code = hv_fetch((HV*)SvRV(ret), "code", strlen("code"), 0);
+			
+			if (code && SvIOK(*code) &&
+				(SvIV(*code) == 10107 || SvIV(*code) == 13435 || SvIV(*code) == 13436)) {
+			  SV *conn = perl_mongo_call_method (self, "_client", 0, 0);
+			  set_disconnected(conn);
+			}
+			
+			croak("query error: %s", SvPV_nolen(*err));
+		  }
 		return ret;
 	};
-       return (SV *)0;
+	return (SV *)0;
 }
+
+
 
 static void kill_cursor(SV *self) {
   mongo_cursor *cursor = (mongo_cursor*)perl_mongo_get_ptr_from_instance(self, &cursor_vtbl);
-  SV *link = perl_mongo_call_reader (self, "_connection");
+  SV *link = perl_mongo_call_reader (self, "_client");
   SV *request_id_sv = perl_mongo_call_reader (self, "_request_id");
   char quickbuf[128];
   buffer buf;
@@ -190,7 +198,7 @@ static void kill_cursor(SV *self) {
   // throw an assertion if we try to kill a non-existant cursor non-cursors have 
   // ids of 0
   if (cursor->cursor_id == 0) {
-    return;
+	return;
   }
   buf.pos = quickbuf;
   buf.start = buf.pos;
@@ -216,14 +224,14 @@ PROTOTYPES: DISABLE
 
 void
 _init (self)
-        SV *self
-    PREINIT:
-        mongo_cursor *cursor;
-    CODE:
-        Newxz(cursor, 1, mongo_cursor);
+		SV *self
+	PREINIT:
+		mongo_cursor *cursor;
+	CODE:
+		Newxz(cursor, 1, mongo_cursor);
 
-        // attach a mongo_cursor* to the MongoDB::Async::Cursor
-        perl_mongo_attach_ptr_to_instance(self, cursor, &cursor_vtbl);
+		// attach a mongo_cursor* to the MongoDB::Async::Cursor
+		perl_mongo_attach_ptr_to_instance(self, cursor, &cursor_vtbl);
 
 
 
@@ -250,6 +258,26 @@ next (self)
 		}
     OUTPUT:
         RETVAL
+
+
+SV *
+reset (self)
+		SV *self
+	PREINIT:
+		mongo_cursor *cursor;
+	CODE:
+		cursor = (mongo_cursor*)perl_mongo_get_ptr_from_instance(self, &cursor_vtbl);
+		cursor->buf.pos = cursor->buf.start;
+		cursor->at = 0;
+		cursor->num = 0;
+
+		cursor->started_iterating = 0;
+		hv_store(SvRV(self), "started_iterating", strlen("started_iterating"), newSViv(0), 0);;
+
+	RETVAL = SvREFCNT_inc(self);
+	OUTPUT:
+	RETVAL
+		
 		
 SV *
 data (self)
@@ -267,59 +295,58 @@ data (self)
 		};
 		
 		ST(0) = sv_2mortal(newRV_noinc(ret));
-        XSRETURN(1);
+        XSRETURN(1);		
 		
-		
-SV *
-reset (self)
-        SV *self
-    PREINIT:
-        mongo_cursor *cursor;
-    CODE:
-        cursor = (mongo_cursor*)perl_mongo_get_ptr_from_instance(self, &cursor_vtbl);
-        cursor->buf.pos = cursor->buf.start;
-        cursor->at = 0;
-        cursor->num = 0;
-		cursor->started_iterating = 0;
-		perl_mongo_call_method(self, "started_iterating", G_DISCARD, 1, &PL_sv_no);
-		
-	RETVAL = SvREFCNT_inc(self);
-    OUTPUT:
-	RETVAL
-        
 
 SV *
 info (self)
-        SV *self
-    PREINIT:
-        mongo_cursor *cursor;
-        HV *hv;
-    CODE:
-        cursor = (mongo_cursor*)perl_mongo_get_ptr_from_instance(self, &cursor_vtbl);
-        
-        hv = newHV();
-        hv_store(hv, "flag", 4, newSViv(cursor->flag), 0);
-        hv_store(hv, "cursor_id", 9,
-                 newSViv(cursor->cursor_id), 0);
-        hv_store(hv, "start", 5, newSViv(cursor->start), 0);
-        hv_store(hv, "at", 2, newSViv(cursor->at), 0);
-        hv_store(hv, "num", 3, newSViv(cursor->num), 0);
-        
-        RETVAL = newRV_noinc((SV*)hv);
-    OUTPUT:
-        RETVAL
-        
-        
+		SV *self
+	PREINIT:
+		mongo_cursor *cursor;
+		HV *hv;
+	CODE:
+		cursor = (mongo_cursor*)perl_mongo_get_ptr_from_instance(self, &cursor_vtbl);
+		
+		hv = newHV();
+		hv_store(hv, "flag", strlen("flag"), newSViv(cursor->flag), 0);
+		hv_store(hv, "cursor_id", strlen("cursor_id"),
+				 newSViv(cursor->cursor_id), 0);
+		hv_store(hv, "start", strlen("start"), newSViv(cursor->start), 0);
+		hv_store(hv, "at", strlen("at"), newSViv(cursor->at), 0);
+		hv_store(hv, "num", strlen("num"), newSViv(cursor->num), 0);
+		
+		RETVAL = newRV_noinc((SV*)hv);
+	OUTPUT:
+		RETVAL
+		
+		
+SV *
+_started_iterating(self, value)
+		SV *self
+		int value
+	PREINIT:
+		mongo_cursor *cursor;
+	CODE:
+		cursor = (mongo_cursor*)perl_mongo_get_ptr_from_instance(self, &cursor_vtbl);
+		
+		RETVAL = newSViv(cursor->started_iterating);
+		
+		cursor->started_iterating = value;
+	OUTPUT:
+		RETVAL
+		
+		
+		
 void
 DESTROY (self)
-      SV *self
+	  SV *self
   PREINIT:
-      mongo_link *link;
-      SV *link_sv;
+	  mongo_link *link;
+	  SV *link_sv;
   CODE:
-      link_sv = perl_mongo_call_reader(self, "_connection");
-      link = (mongo_link*)perl_mongo_get_ptr_from_instance(link_sv, &connection_vtbl);
-      // check if cursor is connected
-      if (link->master && link->master->connected) {
-          kill_cursor(self);
-      }
+	  link_sv = perl_mongo_call_reader(self, "_client");
+	  link = (mongo_link*)perl_mongo_get_ptr_from_instance(link_sv, &connection_vtbl);
+	  // check if cursor is connected
+	  if (link->master && link->master->connected) {
+		  kill_cursor(self);
+	  }

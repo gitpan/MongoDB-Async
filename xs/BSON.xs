@@ -47,3 +47,9 @@ encode_bson(obj)
          XPUSHs(sv_2mortal(newSVpvn(buf.start, buf.pos-buf.start)));
          Safefree(buf.start);
 
+		 
+void
+read_flags()
+    PPCODE:
+	read_flags();
+

@@ -46,6 +46,9 @@ typedef __int64 int64_t;
 #define RX_PRELEN(re) ((re)->prelen)
 #endif
 
+#define SUBTYPE_BINARY_DEPRECATED 2
+#define SUBTYPE_BINARY 0
+
 #if MONGO_BIG_ENDIAN
 
 #define BYTE1_32(b) ((b & 0xff000000) >> 24)
@@ -113,7 +116,7 @@ typedef __int64 int64_t;
 #define BSON_MAXKEY 127
 
 #define GROW_SLOWLY 1048576
-#define MAX_OBJ_SIZE 1024*1024*4
+#define MAX_OBJ_SIZE (1024*1024*4)
 
 typedef struct {
   char *start;
@@ -127,6 +130,16 @@ typedef struct _stackette {
   struct _stackette *prev;
 } stackette;
 
+
+typedef struct {
+  char use_binary;
+  char use_boolean;
+  char utf8_flag_on;
+  char key_char;
+  char looks_like_number;
+  char dt_type;
+} serialize_bson_flags;
+
 #define EMPTY_STACK 0
 
 // it's safer to leave this signed in case there are any other missing BUF_REMAININGs
@@ -138,6 +151,8 @@ typedef struct _stackette {
 extern MGVTBL connection_vtbl, cursor_vtbl;
 extern int perl_mongo_machine_id;
 
+int isUTF8(const char*, int);
+void perl_mongo_mutex_init();
 void perl_mongo_call_xs (pTHX_ void (*subaddr) (pTHX_ CV *cv), CV *cv, SV **mark);
 SV *perl_mongo_call_reader (SV *self, const char *reader);
 SV *perl_mongo_call_method (SV *self, const char *method, I32 flags, int num, ...);

@@ -20,6 +20,7 @@ MODULE = MongoDB::Async::OID  PACKAGE = MongoDB::Async::OID
 
 PROTOTYPES: DISABLE
 
+
 SV *
 _build_value (self, oid_sv=NULL)
         SV *oid_sv
@@ -37,6 +38,18 @@ _build_value (self, oid_sv=NULL)
           perl_mongo_make_id(id);
           perl_mongo_make_oid(id, oid);
         }
+        RETVAL = newSVpvn(oid, 24);
+    OUTPUT:
+        RETVAL
+		
+		
+SV *
+_generate_oid ()
+    PREINIT:
+        char id[12], oid[25];
+    CODE:
+          perl_mongo_make_id(id);
+          perl_mongo_make_oid(id, oid);
         RETVAL = newSVpvn(oid, 24);
     OUTPUT:
         RETVAL

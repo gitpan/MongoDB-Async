@@ -12,14 +12,14 @@ eval {
     if (exists $ENV{MONGOD}) {
         $host = $ENV{MONGOD};
     }
-    $conn = MongoDB::Async::Connection->new(host => $host);
+    $conn = MongoDB::Async::MongoClient->new(host => $host, ssl => $ENV{MONGO_SSL});
 };
 
 if ($@) {
     plan skip_all => $@;
 }
 else {
-    plan tests => 71;
+    plan tests => 74;
 }
 
 my $db = $conn->get_database('test_database');
@@ -208,10 +208,24 @@ is($coll->query->limit(1)->skip(1)->count(1), 1, 'count limit & skip');
 {
     my $cursor = $coll->find();
 
-    $cursor->tailable(1);
-    is($cursor->tailable, 1);
-    $cursor->tailable(0);
-    is($cursor->tailable, 0);
+	$cursor = $cursor->tailable(1);
+	is($cursor->_tailable, 1);
+	$cursor = $cursor->tailable(0);
+	is($cursor->_tailable, 0);
+
+    $cursor = $coll->find()->tailable(1);
+    is($cursor->_tailable, 1);
+    $cursor = $coll->find()->tailable(0);
+    is($cursor->_tailable, 0);
+    
+    #test is actual cursor
+    $coll->drop;
+    $coll->insert({"x" => 1});
+    $cursor = $coll->find()->tailable(0);
+    my $doc = $cursor->next;
+    is($doc->{'x'}, 1);
+    
+	$cursor = $coll->find();
 
     $cursor->immortal(1);
     is($cursor->immortal, 1);
@@ -269,7 +283,7 @@ is($coll->query->limit(1)->skip(1)->count(1), 1, 'count limit & skip');
         $coll->insert({x => $i});
     }
 
-    my $cursor = $db->test_collection->query({}, { limit => 10, skip => 0, sort_by => {created => 1 }});
+    my $cursor = $db->get_collection( 'test_collection' )->query({}, { limit => 10, skip => 0, sort_by => {created => 1 }});
     is($cursor->count(), 5);
 }
 

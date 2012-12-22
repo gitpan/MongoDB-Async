@@ -27,6 +27,7 @@
 #include <winsock2.h>
 #define socklen_t int
 #else
+#include <sys/socket.h>
 #include <sys/types.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
@@ -35,6 +36,11 @@
 #endif
 #include <errno.h>
 
+#ifdef MONGO_SSL
+#include <openssl/rand.h>
+#include <openssl/ssl.h>
+#include <openssl/err.h>
+#endif
 
 // db ops
 #define OP_REPLY 1
@@ -68,15 +74,14 @@
   header.response_to = rto;                                     \
   header.op = opcode;
 
-  int request_id;
 #define CREATE_RESPONSE_HEADER(buf, ns, rto, opcode)    \
-  ++request_id;              \
-  CREATE_MSG_HEADER(request_id, rto, opcode);     \
+  sv_setiv(request_id, SvIV(request_id)+1);             \
+  CREATE_MSG_HEADER(SvIV(request_id), rto, opcode);     \
   APPEND_HEADER_NS(buf, ns, 0);
 
 #define CREATE_HEADER_WITH_OPTS(buf, ns, opcode, opts)  \
-  ++request_id;             \
-  CREATE_MSG_HEADER(request_id, 0, opcode);       \
+  sv_setiv(request_id, SvIV(request_id)+1);             \
+  CREATE_MSG_HEADER(SvIV(request_id), 0, opcode);       \
   APPEND_HEADER_NS(buf, ns, opts);
 
 #define CREATE_HEADER(buf, ns, opcode)          \
@@ -113,12 +118,26 @@ typedef struct {
  * socket is the actual socket the connection is using
  * connected is a boolean indicating if the socket is connected or not
  */
+ 
+
+typedef struct {
+	ev_io w;
+	char *buffer;
+	int len;
+	int read;
+	SV *coro;
+} mongo_async_sock_reader_state;
+
+ 
 typedef struct _mongo_server {
   char *host;
   int port;
   int socket;
   int connected;
+  
+  mongo_async_sock_reader_state sockreader; // for async receiver
 } mongo_server;
+
 
 /*
  * auto_reconnect is whether to reconnect on disconnect
@@ -127,15 +146,6 @@ typedef struct _mongo_server {
  * master is the index of the master server, if there is more than 1 server
  * server is an array of pointers to connections
  */
- 
- typedef struct {
-	ev_io w;
-	char *buffer;
-	int len;
-	int read;
-	SV *coro;
-} sock_reader_state;
- 
 typedef struct {
   int auto_reconnect;
   int timeout;
@@ -143,10 +153,24 @@ typedef struct {
   int num;
   mongo_server *master;
   int copy;
+
+  bool ssl;
+
+  #ifdef MONGO_SSL
+  SSL *ssl_handle;
+  SSL_CTX *ssl_context;
+  #endif
+
+  int (*sender)(void* link, const char* buffer, size_t len);
+  int (*receiver)(void* link, const char* buffer, size_t len);
   
-  sock_reader_state sockreader;
+
   
 } mongo_link;
+
+
+
+
 
 typedef struct {
   // response header
@@ -169,7 +193,21 @@ typedef struct {
 int mongo_link_say(SV *self, buffer *buf);
 int mongo_link_hear(SV *self);
 int perl_mongo_master(SV *self, int auto_reconnect);
-int perl_mongo_connect(char *host, int port, int timeout);
 void set_disconnected(SV *link_sv);
+
+//ssl
+void perl_mongo_connect(mongo_link* link);
+void non_ssl_connect(mongo_link* link);
+
+#ifdef MONGO_SSL
+void tcp_setup(mongo_link* link);
+void ssl_connect(mongo_link* link);
+void ssl_disconnect (mongo_link *link);
+int ssl_send(void* link, const char* buffer, size_t len);
+int ssl_recv(void* link, const char* buffer, size_t len);
+#endif
+
+int non_ssl_send(void* link, const char* buffer, size_t len);
+int non_ssl_recv(void* link, const char* buffer, size_t len);
 
 #endif

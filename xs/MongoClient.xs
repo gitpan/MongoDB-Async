@@ -52,9 +52,7 @@ connection_clone (pTHX_ MAGIC *mg, CLONE_PARAMS *params)
 
     Newx(new_link, 1, mongo_link);
     Copy(link, new_link, 1, mongo_link);
-	
-	new_link->sockreader.buffer = 0;
-	
+
     if (link->master) {
         mongo_server *new_master;
 
@@ -97,21 +95,21 @@ MGVTBL connection_vtbl = {
 #endif
 };
 
-MODULE = MongoDB::Async::Connection  PACKAGE = MongoDB::Async::Connection
+MODULE = MongoDB::Async::MongoClient  PACKAGE = MongoDB::Async::MongoClient
 
 PROTOTYPES: DISABLE
 
 void 
-_init_conn(self, host, port)
+_init_conn(self, host, port, ssl)
     SV *self
     char *host
     int port
+    bool ssl
   PREINIT:
     SV *auto_reconnect_sv = 0, *timeout_sv = 0;
     mongo_link *link;
   CODE:
     Newx(link, 1, mongo_link);
-	link->sockreader.buffer = 0;
     perl_mongo_attach_ptr_to_instance(self, link, &connection_vtbl);
 
     /*
@@ -123,7 +121,11 @@ _init_conn(self, host, port)
     memcpy(link->master->host, host, strlen(host));
     link->master->port = port;
     link->master->connected = 0;
-
+    link->ssl = ssl;
+#ifdef MONGO_SSL 
+    link->ssl_handle = NULL;
+    link->ssl_context = NULL;
+#endif
     auto_reconnect_sv = perl_mongo_call_reader (ST(0), "auto_reconnect");
     timeout_sv = perl_mongo_call_reader (ST(0), "timeout");
 
@@ -140,14 +142,19 @@ _init_conn_holder(self, master)
     mongo_link *self_link, *master_link;
   CODE:
     Newx(self_link, 1, mongo_link);
-	self_link->sockreader.buffer = 0;
     perl_mongo_attach_ptr_to_instance(self, self_link, &connection_vtbl);
 
     master_link = (mongo_link*)perl_mongo_get_ptr_from_instance(master, &connection_vtbl);
 
     self_link->master = master_link->master;
     self_link->copy = 1;
-    
+    self_link->ssl = master_link->ssl;
+#ifdef MONGO_SSL 
+    self_link->ssl_handle = master_link->ssl_handle;
+    self_link->ssl_context = master_link->ssl_context;
+#endif
+    self_link->sender = master_link->sender;
+    self_link->receiver = master_link->receiver;
 
 void
 connect (self)
@@ -156,8 +163,7 @@ connect (self)
      mongo_link *link = (mongo_link*)perl_mongo_get_ptr_from_instance(self, &connection_vtbl);
      SV *username, *password;
    CODE:
-     link->master->socket = perl_mongo_connect(link->master->host, link->master->port, link->timeout);
-     link->master->connected = link->master->socket != -1;
+    perl_mongo_connect(link);
 
      if (!link->master->connected) {
        croak ("couldn't connect to server %s:%d", link->master->host, link->master->port);
@@ -169,28 +175,27 @@ connect (self)
 
      if (SvPOK(username) && SvPOK(password)) {
        SV *database, *result, **ok;
-         
+
        database = perl_mongo_call_reader (self, "db_name");
        result = perl_mongo_call_method(self, "authenticate", 0, 3, database, username, password);
-	   
-       if (!result || SvTYPE(result) != SVt_RV) { // posible memory leak.(result not freed)
-         if (result && SvPOK(result)) {
-           croak("%s", SvPV_nolen(result));
-         }
-         else { 
-           sv_dump(result);
-           croak("something weird happened with authentication");
-         }
+       if (!result) {
+         croak("authentication returned no result");
        }
-		 
-       ok = hv_fetch((HV*)SvRV(result), "ok", 2, 0);
-       if (!ok || 1 != SvIV(*ok)) {
-		 SvREFCNT_dec(result);
-         croak ("couldn't authenticate with server");
+       // we're expecting either a string (failure) or a hash (success hopefully)
+       if (SvPOK(result)) {
+         croak("%s", SvPV_nolen(result));
+       } else if (SvROK(result)) {
+         ok = hv_fetch((HV*)SvRV(result), "ok", strlen("ok"), 0);
+         if (!ok || 1 != SvIV(*ok)) {
+           croak ("couldn't authenticate with server");
+         }
+       } else {
+         sv_dump(result);
+         croak("something weird happened with authentication");
        }
-		SvREFCNT_dec(result);
+
      }
-	
+
 
 
 int
@@ -212,7 +217,7 @@ connected(self)
 
 
 int
-send(self, str)
+_send(self, str)
          SV *self
          SV *str
      PREINIT:
@@ -224,9 +229,6 @@ send(self, str)
          buf.end = buf.start+len;
      CODE:
          RETVAL = mongo_link_say(self, &buf);
-         if (RETVAL == -1) {
-           die("can't get db response, not connected");
-         }
      OUTPUT:
          RETVAL
 
@@ -245,6 +247,7 @@ _DESTROY (self)
          mongo_link *link;
      CODE:
          link = (mongo_link*)perl_mongo_get_ptr_from_instance(self, &connection_vtbl);
+
          if (!link->copy && link->master) {
            set_disconnected(self);
          }

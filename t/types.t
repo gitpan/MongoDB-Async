@@ -16,7 +16,7 @@ eval {
     if (exists $ENV{MONGOD}) {
         $host = $ENV{MONGOD};
     }
-    $conn = MongoDB::Async::Connection->new(host => $host);
+    $conn = MongoDB::Async::MongoClient->new(host => $host, ssl => $ENV{MONGO_SSL});
 };
 
 if ($@) {
@@ -261,9 +261,9 @@ SKIP: {
 
     $coll->insert({"x" => boolean::true, "y" => boolean::false});
     my $x = $coll->find_one;
-
-    isa_ok($x->{x}, 'SCALAR');
-    isa_ok($x->{y}, 'SCALAR');
+	
+    isa_ok(\$x->{x}, 'SCALAR');
+    isa_ok(\$x->{y}, 'SCALAR');
     is($x->{x}, 1);
     is($x->{y}, 0);
 

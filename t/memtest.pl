@@ -7,7 +7,7 @@ use DateTime;
 
 use MongoDB::Async;
 
-my $conn = MongoDB::Async::Connection->new;
+my $conn = MongoDB::Async::MongoClient->new(ssl => $ENV{MONGO_SSL});
 my $db   = $conn->get_database('test_database');
 my $coll = $db->get_collection('test_collection');
 

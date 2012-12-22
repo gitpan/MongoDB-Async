@@ -1,7 +1,7 @@
 # This Makefile is for the MongoDB::Async extension to perl.
 #
 # It was generated automatically by MakeMaker version
-# 6.57_05 (Revision: 65705) from the contents of
+# 6.62 (Revision: 66200) from the contents of
 # Makefile.PL. Don't edit this file, edit Makefile.PL instead.
 #
 #       ANY CHANGES MADE HERE WILL BE LOST!
@@ -12,20 +12,21 @@
 #   MakeMaker Parameters:
 
 #     ABSTRACT => q[Asynchronous Mongo Driver for Perl]
-#     AUTHOR => [q[Florian Ragwitz <rafl@debian.org>, Kristina Chodorow <kristina@10gen.com>, Sergey Gorelov <nyaknyan@gmail.com>]]
-#     BUILD_REQUIRES => { Try::Tiny=>q[0], DateTime=>q[0], Test::Exception=>q[0], Tie::IxHash=>q[0], ExtUtils::MakeMaker=>q[6.42], Data::Types=>q[0], FileHandle=>q[0], boolean=>q[0], File::Temp=>q[0.17], JSON=>q[0], File::Slurp=>q[0] }
+#     AUTHOR => [q[Florian Ragwitz <rafl@debian.org>, Kristina Chodorow <kristina@10gen.com>, Mike Friedman <mike.friedman@10gen.com>]]
+#     BUILD_REQUIRES => { Try::Tiny=>q[0], DateTime=>q[0], Test::Exception=>q[0], Tie::IxHash=>q[0], ExtUtils::MakeMaker=>q[6.59], Data::Types=>q[0], DateTime::Tiny=>q[0], FileHandle=>q[0], boolean=>q[0], Test::Warn=>q[0], File::Temp=>q[0.17], JSON=>q[0], File::Slurp=>q[0] }
+#     CONFIGURE_REQUIRES => {  }
 #     DISTNAME => q[MongoDB-Async]
 #     INC => q[-I. ]
 #     LICENSE => q[apache]
-#     MIN_PERL_VERSION => q[5.008008]
+#     MIN_PERL_VERSION => q[5.008004]
 #     NAME => q[MongoDB::Async]
 #     NO_META => q[1]
-#     OBJECT => q[xs/Async$(OBJ_EXT) xs/BSON$(OBJ_EXT) xs/Connection$(OBJ_EXT) xs/Cursor$(OBJ_EXT) xs/OID$(OBJ_EXT) mongo_link$(OBJ_EXT) perl_mongo$(OBJ_EXT)]
-#     PREREQ_PM => { Try::Tiny=>q[0], DateTime=>q[0], Test::Exception=>q[0], XSLoader=>q[0], Tie::IxHash=>q[0], ExtUtils::MakeMaker=>q[6.42], Data::Types=>q[0], Coro=>q[0], FileHandle=>q[0], Class::Method::Modifiers=>q[0], boolean=>q[0], Any::Moose=>q[0], File::Temp=>q[0.17], EV=>q[0], Digest::MD5=>q[0], JSON=>q[0], File::Slurp=>q[0] }
-#     VERSION => q[0.45]
+#     OBJECT => q[xs/BSON$(OBJ_EXT) xs/Cursor$(OBJ_EXT) xs/Mongo$(OBJ_EXT) xs/MongoClient$(OBJ_EXT) xs/OID$(OBJ_EXT) mongo_link$(OBJ_EXT) perl_mongo$(OBJ_EXT)]
+#     PREREQ_PM => { Scalar::Util=>q[0], DateTime=>q[0], XSLoader=>q[0], Tie::IxHash=>q[0], Data::Types=>q[0], DateTime::Tiny=>q[0], FileHandle=>q[0], Class::Method::Modifiers=>q[0], boolean=>q[0], Coro::EV=>q[0], EV=>q[0], Digest::MD5=>q[0], File::Slurp=>q[0], Moose=>q[0], Try::Tiny=>q[0], Test::Exception=>q[0], ExtUtils::MakeMaker=>q[6.59], Coro=>q[0], Module::Install=>q[0], Test::Warn=>q[0], Devel::GlobalDestruction=>q[0], File::Temp=>q[0.17], JSON=>q[0] }
+#     VERSION => q[0.503.2]
 #     VERSION_FROM => q[lib/MongoDB/Async.pm]
-#     XS => { xs/Connection.xs=>q[xs/Connection.c], xs/OID.xs=>q[xs/OID.c], xs/BSON.xs=>q[xs/BSON.c], xs/Async.xs=>q[xs/Async.c], xs/Cursor.xs=>q[xs/Cursor.c] }
-#     clean => { FILES=>q[xs/Async$(OBJ_EXT) xs/BSON$(OBJ_EXT) xs/Connection$(OBJ_EXT) xs/Cursor$(OBJ_EXT) xs/OID$(OBJ_EXT) mongo_link$(OBJ_EXT) perl_mongo$(OBJ_EXT)] }
+#     XS => { xs/Mongo.xs=>q[xs/Mongo.c], xs/MongoClient.xs=>q[xs/MongoClient.c], xs/OID.xs=>q[xs/OID.c], xs/BSON.xs=>q[xs/BSON.c], xs/Cursor.xs=>q[xs/Cursor.c] }
+#     clean => { FILES=>q[xs/BSON$(OBJ_EXT) xs/Cursor$(OBJ_EXT) xs/Mongo$(OBJ_EXT) xs/MongoClient$(OBJ_EXT) xs/OID$(OBJ_EXT) mongo_link$(OBJ_EXT) perl_mongo$(OBJ_EXT)] }
 #     dist => {  }
 #     realclean => { FILES=>q[MYMETA.yml] }
 #     test => { TESTS=>q[t/*.t t/threads/*.t] }
@@ -62,16 +63,20 @@ VENDORLIBEXP =
 
 
 # --- MakeMaker constants section:
+
+# Get dmake to read long commands like PM_TO_BLIB
+MAXLINELENGTH = 65536
+
 AR_STATIC_ARGS = cr
 DIRFILESEP = \\
 DFSEP = $(DIRFILESEP)
 NAME = MongoDB::Async
 NAME_SYM = MongoDB_Async
-VERSION = 0.45
+VERSION = 0.503.2
 VERSION_MACRO = VERSION
-VERSION_SYM = 0_45
+VERSION_SYM = 0_503_2
 DEFINE_VERSION = -D$(VERSION_MACRO)=\"$(VERSION)\"
-XS_VERSION = 0.45
+XS_VERSION = 0.503.2
 XS_VERSION_MACRO = XS_VERSION
 XS_DEFINE_VERSION = -D$(XS_VERSION_MACRO)=\"$(XS_VERSION)\"
 INST_ARCHLIB = blib\arch
@@ -80,7 +85,6 @@ INST_BIN = blib\bin
 INST_LIB = blib\lib
 INST_MAN1DIR = blib\man1
 INST_MAN3DIR = blib\man3
-INST_HTMLDIR = blib\html
 MAN1EXT = 1
 MAN3EXT = 3
 INSTALLDIRS = site
@@ -125,12 +129,6 @@ INSTALLSITEMAN3DIR = $(INSTALLMAN3DIR)
 DESTINSTALLSITEMAN3DIR = $(DESTDIR)$(INSTALLSITEMAN3DIR)
 INSTALLVENDORMAN3DIR = 
 DESTINSTALLVENDORMAN3DIR = $(DESTDIR)$(INSTALLVENDORMAN3DIR)
-INSTALLHTMLDIR = C:\Perl\html
-DESTINSTALLHTMLDIR = $(DESTDIR)$(INSTALLHTMLDIR)
-INSTALLSITEHTMLDIR = C:\Perl\html
-DESTINSTALLSITEHTMLDIR = $(DESTDIR)$(INSTALLSITEHTMLDIR)
-INSTALLVENDORHTMLDIR = C:\Perl\html
-DESTINSTALLVENDORHTMLDIR = $(DESTDIR)$(INSTALLVENDORHTMLDIR)
 PERL_LIB =
 PERL_ARCHLIB = C:\Perl\lib
 LIBPERL_A = libperl.a
@@ -153,9 +151,9 @@ PERM_DIR = 755
 PERM_RW = 644
 PERM_RWX = 755
 
-MAKEMAKER   = C:/Perl/lib/ExtUtils/MakeMaker.pm
-MM_VERSION  = 6.57_05
-MM_REVISION = 65705
+MAKEMAKER   = C:/Perl/site/lib/ExtUtils/MakeMaker.pm
+MM_VERSION  = 6.62
+MM_REVISION = 66200
 
 # FULLEXT = Pathname for extension directory (eg Foo/Bar/Oracle).
 # BASEEXT = Basename part of FULLEXT. May be just equal FULLEXT. (eg Oracle)
@@ -168,16 +166,16 @@ PARENT_NAME = MongoDB
 DLBASE = $(BASEEXT)
 VERSION_FROM = lib/MongoDB/Async.pm
 INC = -I. 
-OBJECT = xs/Async$(OBJ_EXT) xs/BSON$(OBJ_EXT) xs/Connection$(OBJ_EXT) xs/Cursor$(OBJ_EXT) xs/OID$(OBJ_EXT) mongo_link$(OBJ_EXT) perl_mongo$(OBJ_EXT)
+OBJECT = xs/BSON$(OBJ_EXT) xs/Cursor$(OBJ_EXT) xs/Mongo$(OBJ_EXT) xs/MongoClient$(OBJ_EXT) xs/OID$(OBJ_EXT) mongo_link$(OBJ_EXT) perl_mongo$(OBJ_EXT)
 LDFROM = $(OBJECT)
 LINKTYPE = dynamic
 BOOTDEP = 
 
 # Handy lists of source code files:
-XS_FILES = xs/Async.xs \
-	xs/BSON.xs \
-	xs/Connection.xs \
+XS_FILES = xs/BSON.xs \
 	xs/Cursor.xs \
+	xs/Mongo.xs \
+	xs/MongoClient.xs \
 	xs/OID.xs
 C_FILES  = mongo_link.c \
 	perl_mongo.c
@@ -189,16 +187,22 @@ H_FILES  = mongo_link.h \
 MAN1PODS = 
 MAN3PODS = lib/MongoDB/Async.pm \
 	lib/MongoDB/Async/BSON.pm \
+	lib/MongoDB/Async/BSON/Binary.pm \
 	lib/MongoDB/Async/Code.pm \
 	lib/MongoDB/Async/Collection.pm \
 	lib/MongoDB/Async/Connection.pm \
 	lib/MongoDB/Async/Cursor.pm \
+	lib/MongoDB/Async/DataTypes.pod \
 	lib/MongoDB/Async/Database.pm \
+	lib/MongoDB/Async/Examples.pod \
 	lib/MongoDB/Async/GridFS.pm \
 	lib/MongoDB/Async/GridFS/File.pm \
+	lib/MongoDB/Async/Indexing.pod \
+	lib/MongoDB/Async/MongoClient.pm \
 	lib/MongoDB/Async/OID.pm \
 	lib/MongoDB/Async/Pool.pm \
-	lib/MongoDB/Async/Timestamp.pm
+	lib/MongoDB/Async/Timestamp.pm \
+	lib/MongoDB/Async/Tutorial.pod
 
 # Where is the Config information that we are using/depend on
 CONFIGDEP = $(PERL_ARCHLIB)$(DFSEP)Config.pm $(PERL_INC)$(DFSEP)config.h
@@ -220,50 +224,71 @@ PERL_ARCHIVE       = $(PERL_INC)\perl514.lib
 PERL_ARCHIVE_AFTER = 
 
 
-TO_INST_PM = bachmark.pl \
+TO_INST_PM = benchmark_compare.pl \
 	lib/MongoDB/Async.pm \
 	lib/MongoDB/Async/BSON.pm \
+	lib/MongoDB/Async/BSON/Binary.pm \
 	lib/MongoDB/Async/Code.pm \
 	lib/MongoDB/Async/Collection.pm \
 	lib/MongoDB/Async/Connection.pm \
 	lib/MongoDB/Async/Cursor.pm \
+	lib/MongoDB/Async/DataTypes.pod \
 	lib/MongoDB/Async/Database.pm \
+	lib/MongoDB/Async/Examples.pod \
 	lib/MongoDB/Async/GridFS.pm \
 	lib/MongoDB/Async/GridFS/File.pm \
+	lib/MongoDB/Async/Indexing.pod \
+	lib/MongoDB/Async/MongoClient.pm \
 	lib/MongoDB/Async/OID.pm \
 	lib/MongoDB/Async/Pool.pm \
-	lib/MongoDB/Async/Timestamp.pm
+	lib/MongoDB/Async/Timestamp.pm \
+	lib/MongoDB/Async/Tutorial.pod \
+	threading_stress_test.pl
 
-PM_TO_BLIB = lib/MongoDB/Async/Timestamp.pm \
-	blib\lib\MongoDB\Async\Timestamp.pm \
-	bachmark.pl \
-	$(INST_LIB)\MongoDB\bachmark.pl \
+PM_TO_BLIB = benchmark_compare.pl \
+	$(INST_LIB)\MongoDB\benchmark_compare.pl \
 	lib/MongoDB/Async.pm \
 	blib\lib\MongoDB\Async.pm \
-	lib/MongoDB/Async/GridFS/File.pm \
-	blib\lib\MongoDB\Async\GridFS\File.pm \
-	lib/MongoDB/Async/Collection.pm \
-	blib\lib\MongoDB\Async\Collection.pm \
-	lib/MongoDB/Async/Connection.pm \
-	blib\lib\MongoDB\Async\Connection.pm \
+	lib/MongoDB/Async/DataTypes.pod \
+	blib\lib\MongoDB\Async\DataTypes.pod \
+	lib/MongoDB/Async/Examples.pod \
+	blib\lib\MongoDB\Async\Examples.pod \
 	lib/MongoDB/Async/Cursor.pm \
 	blib\lib\MongoDB\Async\Cursor.pm \
+	lib/MongoDB/Async/GridFS.pm \
+	blib\lib\MongoDB\Async\GridFS.pm \
+	lib/MongoDB/Async/Code.pm \
+	blib\lib\MongoDB\Async\Code.pm \
+	lib/MongoDB/Async/Tutorial.pod \
+	blib\lib\MongoDB\Async\Tutorial.pod \
+	lib/MongoDB/Async/BSON.pm \
+	blib\lib\MongoDB\Async\BSON.pm \
+	lib/MongoDB/Async/Timestamp.pm \
+	blib\lib\MongoDB\Async\Timestamp.pm \
+	threading_stress_test.pl \
+	$(INST_LIB)\MongoDB\threading_stress_test.pl \
+	lib/MongoDB/Async/GridFS/File.pm \
+	blib\lib\MongoDB\Async\GridFS\File.pm \
+	lib/MongoDB/Async/Indexing.pod \
+	blib\lib\MongoDB\Async\Indexing.pod \
+	lib/MongoDB/Async/Connection.pm \
+	blib\lib\MongoDB\Async\Connection.pm \
+	lib/MongoDB/Async/Collection.pm \
+	blib\lib\MongoDB\Async\Collection.pm \
+	lib/MongoDB/Async/MongoClient.pm \
+	blib\lib\MongoDB\Async\MongoClient.pm \
 	lib/MongoDB/Async/OID.pm \
 	blib\lib\MongoDB\Async\OID.pm \
 	lib/MongoDB/Async/Database.pm \
 	blib\lib\MongoDB\Async\Database.pm \
-	lib/MongoDB/Async/Code.pm \
-	blib\lib\MongoDB\Async\Code.pm \
-	lib/MongoDB/Async/GridFS.pm \
-	blib\lib\MongoDB\Async\GridFS.pm \
+	lib/MongoDB/Async/BSON/Binary.pm \
+	blib\lib\MongoDB\Async\BSON\Binary.pm \
 	lib/MongoDB/Async/Pool.pm \
-	blib\lib\MongoDB\Async\Pool.pm \
-	lib/MongoDB/Async/BSON.pm \
-	blib\lib\MongoDB\Async\BSON.pm
+	blib\lib\MongoDB\Async\Pool.pm
 
 
 # --- MakeMaker platform_constants section:
-MM_Win32_VERSION = 6.57_05
+MM_Win32_VERSION = 6.62
 
 
 # --- MakeMaker tool_autosplit section:
@@ -274,7 +299,7 @@ AUTOSPLITFILE = $(ABSPERLRUN)  -e "use AutoSplit;  autosplit($$ARGV[0], $$ARGV[1
 
 # --- MakeMaker tool_xsubpp section:
 
-XSUBPPDIR = C:\Perl\lib\ExtUtils
+XSUBPPDIR = C:\Perl\site\lib\ExtUtils
 XSUBPP = $(XSUBPPDIR)$(DFSEP)xsubpp
 XSUBPPRUN = $(PERLRUN) $(XSUBPP)
 XSPROTOARG = 
@@ -284,29 +309,29 @@ XSUBPP_EXTRA_ARGS =
 
 
 # --- MakeMaker tools_other section:
-CHMOD = $(ABSPERLRUN) -MExtUtils::Command -e "chmod" --
-CP = $(ABSPERLRUN) -MExtUtils::Command -e "cp" --
-MV = $(ABSPERLRUN) -MExtUtils::Command -e "mv" --
+CHMOD = $(ABSPERLRUN) -MExtUtils::Command -e chmod --
+CP = $(ABSPERLRUN) -MExtUtils::Command -e cp --
+MV = $(ABSPERLRUN) -MExtUtils::Command -e mv --
 NOOP = rem
 NOECHO = @
-RM_F = $(ABSPERLRUN) -MExtUtils::Command -e "rm_f" --
-RM_RF = $(ABSPERLRUN) -MExtUtils::Command -e "rm_rf" --
-TEST_F = $(ABSPERLRUN) -MExtUtils::Command -e "test_f" --
-TOUCH = $(ABSPERLRUN) -MExtUtils::Command -e "touch" --
+RM_F = $(ABSPERLRUN) -MExtUtils::Command -e rm_f --
+RM_RF = $(ABSPERLRUN) -MExtUtils::Command -e rm_rf --
+TEST_F = $(ABSPERLRUN) -MExtUtils::Command -e test_f --
+TOUCH = $(ABSPERLRUN) -MExtUtils::Command -e touch --
 UMASK_NULL = umask 0
 DEV_NULL = > NUL
-MKPATH = $(ABSPERLRUN) -MExtUtils::Command -e "mkpath" --
-EQUALIZE_TIMESTAMP = $(ABSPERLRUN) -MExtUtils::Command -e "eqtime" --
+MKPATH = $(ABSPERLRUN) -MExtUtils::Command -e mkpath --
+EQUALIZE_TIMESTAMP = $(ABSPERLRUN) -MExtUtils::Command -e eqtime --
 FALSE = $(ABSPERLRUN)  -e "exit 1" --
 TRUE = $(ABSPERLRUN)  -e "exit 0" --
-ECHO = $(ABSPERLRUN) -l -e "print qq{{@ARGV}" --
-ECHO_N = $(ABSPERLRUN)  -e "print qq{{@ARGV}" --
+ECHO = $(ABSPERLRUN) -l -e "print qq{{@ARGV}}" --
+ECHO_N = $(ABSPERLRUN)  -e "print qq{{@ARGV}}" --
 UNINST = 0
 VERBINST = 0
-MOD_INSTALL = $(ABSPERLRUN) -MExtUtils::Install -e "install([ from_to => {{@ARGV}, verbose => '$(VERBINST)', uninstall_shadows => '$(UNINST)', dir_mode => '$(PERM_DIR)' ]);" --
-DOC_INSTALL = $(ABSPERLRUN) -MExtUtils::Command::MM -e "perllocal_install" --
-UNINSTALL = $(ABSPERLRUN) -MExtUtils::Command::MM -e "uninstall" --
-WARN_IF_OLD_PACKLIST = $(ABSPERLRUN) -MExtUtils::Command::MM -e "warn_if_old_packlist" --
+MOD_INSTALL = $(ABSPERLRUN) -MExtUtils::Install -e "install([ from_to => {{@ARGV}}, verbose => '$(VERBINST)', uninstall_shadows => '$(UNINST)', dir_mode => '$(PERM_DIR)' ]);" --
+DOC_INSTALL = $(ABSPERLRUN) -MExtUtils::Command::MM -e perllocal_install --
+UNINSTALL = $(ABSPERLRUN) -MExtUtils::Command::MM -e uninstall --
+WARN_IF_OLD_PACKLIST = $(ABSPERLRUN) -MExtUtils::Command::MM -e warn_if_old_packlist --
 MACROSTART = 
 MACROEND = 
 USEMAKEFILE = -f
@@ -334,7 +359,7 @@ RCS_LABEL = rcs -Nv$(VERSION_SYM): -q
 DIST_CP = best
 DIST_DEFAULT = tardist
 DISTNAME = MongoDB-Async
-DISTVNAME = MongoDB-Async-0.45
+DISTVNAME = MongoDB-Async-0.503.2
 
 
 # --- MakeMaker macro section:
@@ -412,7 +437,7 @@ PASTHRU =
 
 
 # --- MakeMaker top_targets section:
-all :: pure_all htmlifypods
+all :: pure_all
 	$(NOECHO) $(NOOP)
 
 
@@ -558,55 +583,45 @@ POD2MAN = $(POD2MAN_EXE)
 
 
 manifypods : pure_all  \
-	lib/MongoDB/Async/Timestamp.pm \
 	lib/MongoDB/Async.pm \
-	lib/MongoDB/Async/GridFS/File.pm \
-	lib/MongoDB/Async/Collection.pm \
-	lib/MongoDB/Async/Connection.pm \
+	lib/MongoDB/Async/DataTypes.pod \
+	lib/MongoDB/Async/Examples.pod \
 	lib/MongoDB/Async/Cursor.pm \
+	lib/MongoDB/Async/GridFS.pm \
+	lib/MongoDB/Async/Code.pm \
+	lib/MongoDB/Async/Tutorial.pod \
+	lib/MongoDB/Async/BSON.pm \
+	lib/MongoDB/Async/Timestamp.pm \
+	lib/MongoDB/Async/GridFS/File.pm \
+	lib/MongoDB/Async/Indexing.pod \
+	lib/MongoDB/Async/Connection.pm \
+	lib/MongoDB/Async/Collection.pm \
+	lib/MongoDB/Async/MongoClient.pm \
 	lib/MongoDB/Async/OID.pm \
 	lib/MongoDB/Async/Database.pm \
-	lib/MongoDB/Async/Code.pm \
-	lib/MongoDB/Async/GridFS.pm \
-	lib/MongoDB/Async/Pool.pm \
-	lib/MongoDB/Async/BSON.pm
+	lib/MongoDB/Async/BSON/Binary.pm \
+	lib/MongoDB/Async/Pool.pm
 	$(NOECHO) $(POD2MAN) --section=3 --perm_rw=$(PERM_RW) \
-	  lib/MongoDB/Async/Timestamp.pm $(INST_MAN3DIR)\MongoDB.Async.Timestamp.$(MAN3EXT) \
 	  lib/MongoDB/Async.pm $(INST_MAN3DIR)\MongoDB.Async.$(MAN3EXT) \
-	  lib/MongoDB/Async/GridFS/File.pm $(INST_MAN3DIR)\MongoDB.Async.GridFS.File.$(MAN3EXT) \
-	  lib/MongoDB/Async/Collection.pm $(INST_MAN3DIR)\MongoDB.Async.Collection.$(MAN3EXT) \
-	  lib/MongoDB/Async/Connection.pm $(INST_MAN3DIR)\MongoDB.Async.Connection.$(MAN3EXT) \
+	  lib/MongoDB/Async/DataTypes.pod $(INST_MAN3DIR)\MongoDB.Async.DataTypes.$(MAN3EXT) \
+	  lib/MongoDB/Async/Examples.pod $(INST_MAN3DIR)\MongoDB.Async.Examples.$(MAN3EXT) \
 	  lib/MongoDB/Async/Cursor.pm $(INST_MAN3DIR)\MongoDB.Async.Cursor.$(MAN3EXT) \
-	  lib/MongoDB/Async/OID.pm $(INST_MAN3DIR)\MongoDB.Async.OID.$(MAN3EXT) \
-	  lib/MongoDB/Async/Database.pm $(INST_MAN3DIR)\MongoDB.Async.Database.$(MAN3EXT) \
-	  lib/MongoDB/Async/Code.pm $(INST_MAN3DIR)\MongoDB.Async.Code.$(MAN3EXT) \
 	  lib/MongoDB/Async/GridFS.pm $(INST_MAN3DIR)\MongoDB.Async.GridFS.$(MAN3EXT) \
-	  lib/MongoDB/Async/Pool.pm $(INST_MAN3DIR)\MongoDB.Async.Pool.$(MAN3EXT) \
-	  lib/MongoDB/Async/BSON.pm $(INST_MAN3DIR)\MongoDB.Async.BSON.$(MAN3EXT) 
+	  lib/MongoDB/Async/Code.pm $(INST_MAN3DIR)\MongoDB.Async.Code.$(MAN3EXT) \
+	  lib/MongoDB/Async/Tutorial.pod $(INST_MAN3DIR)\MongoDB.Async.Tutorial.$(MAN3EXT) \
+	  lib/MongoDB/Async/BSON.pm $(INST_MAN3DIR)\MongoDB.Async.BSON.$(MAN3EXT) \
+	  lib/MongoDB/Async/Timestamp.pm $(INST_MAN3DIR)\MongoDB.Async.Timestamp.$(MAN3EXT) \
+	  lib/MongoDB/Async/GridFS/File.pm $(INST_MAN3DIR)\MongoDB.Async.GridFS.File.$(MAN3EXT) \
+	  lib/MongoDB/Async/Indexing.pod $(INST_MAN3DIR)\MongoDB.Async.Indexing.$(MAN3EXT) \
+	  lib/MongoDB/Async/Connection.pm $(INST_MAN3DIR)\MongoDB.Async.Connection.$(MAN3EXT) \
+	  lib/MongoDB/Async/Collection.pm $(INST_MAN3DIR)\MongoDB.Async.Collection.$(MAN3EXT) \
+	  lib/MongoDB/Async/MongoClient.pm $(INST_MAN3DIR)\MongoDB.Async.MongoClient.$(MAN3EXT) \
+	  lib/MongoDB/Async/OID.pm $(INST_MAN3DIR)\MongoDB.Async.OID.$(MAN3EXT) \
+	  lib/MongoDB/Async/Database.pm $(INST_MAN3DIR)\MongoDB.Async.Database.$(MAN3EXT) 
+	$(NOECHO) $(POD2MAN) --section=3 --perm_rw=$(PERM_RW) \
+	  lib/MongoDB/Async/BSON/Binary.pm $(INST_MAN3DIR)\MongoDB.Async.BSON.Binary.$(MAN3EXT) \
+	  lib/MongoDB/Async/Pool.pm $(INST_MAN3DIR)\MongoDB.Async.Pool.$(MAN3EXT) 
 
-
-
-
-# --- MakeMaker htmlifypods section:
-
-POD2HTML_EXE = $(PERLRUN) "-MActivePerl::DocTools" -e "UpdateHTML_blib(installdirs => "$(INSTALLDIRS)")"
-POD2HTML = $(POD2HTML_EXE)
-
-
-htmlifypods :  \
-	lib/MongoDB/Async/Timestamp.pm \
-	lib/MongoDB/Async.pm \
-	lib/MongoDB/Async/GridFS/File.pm \
-	lib/MongoDB/Async/Collection.pm \
-	lib/MongoDB/Async/Connection.pm \
-	lib/MongoDB/Async/Cursor.pm \
-	lib/MongoDB/Async/OID.pm \
-	lib/MongoDB/Async/Database.pm \
-	lib/MongoDB/Async/Code.pm \
-	lib/MongoDB/Async/GridFS.pm \
-	lib/MongoDB/Async/Pool.pm \
-	lib/MongoDB/Async/BSON.pm
-	$(NOECHO) $(POD2HTML)
 
 
 
@@ -634,28 +649,28 @@ clean :: clean_subdirs
 	- $(RM_F) \
 	  core.[0-9] $(BASEEXT).bso \
 	  pm_to_blib.ts core.[0-9][0-9][0-9][0-9] \
-	  xs/Connection.c MYMETA.yml \
-	  perl$(EXE_EXT) tmon.out \
-	  *$(OBJ_EXT) pm_to_blib \
-	  xs/OID.c blibdirs.ts \
-	  *perl.core core.*perl.*.? \
-	  xs/Async.c xs/Cursor.c \
+	  MYMETA.yml perl$(EXE_EXT) \
+	  tmon.out *$(OBJ_EXT) \
+	  pm_to_blib xs/OID.c \
+	  blibdirs.ts *perl.core \
+	  core.*perl.*.? xs/Cursor.c \
 	  $(BASEEXT).def core.[0-9][0-9][0-9] \
 	  mon.out lib$(BASEEXT).def \
 	  perl.exe perlmain.c \
 	  so_locations $(BASEEXT).exp \
 	  *$(LIB_EXT) core \
 	  core.[0-9][0-9] $(INST_ARCHAUTODIR)\extralibs.ld \
+	  MYMETA.json xs/MongoClient.c \
 	  $(BOOTSTRAP) $(BASEEXT).x \
-	  $(INST_ARCHAUTODIR)\extralibs.all xs/BSON.c \
-	  core.[0-9][0-9][0-9][0-9][0-9] $(MAKE_APERL_FILE) \
-	  perl 
+	  $(INST_ARCHAUTODIR)\extralibs.all xs/Mongo.c \
+	  xs/BSON.c core.[0-9][0-9][0-9][0-9][0-9] \
+	  $(MAKE_APERL_FILE) perl 
 	- $(RM_RF) \
 	  xs/OID$(OBJ_EXT) dll.base \
-	  xs/Connection$(OBJ_EXT) xs/Cursor$(OBJ_EXT) \
-	  perl_mongo$(OBJ_EXT) dll.exp \
-	  mongo_link$(OBJ_EXT) blib \
-	  xs/Async$(OBJ_EXT) xs/BSON$(OBJ_EXT) 
+	  xs/MongoClient$(OBJ_EXT) xs/Mongo$(OBJ_EXT) \
+	  xs/Cursor$(OBJ_EXT) perl_mongo$(OBJ_EXT) \
+	  dll.exp mongo_link$(OBJ_EXT) \
+	  blib xs/BSON$(OBJ_EXT) 
 	- $(MV) $(FIRST_MAKEFILE) $(MAKEFILE_OLD) $(DEV_NULL)
 
 
@@ -768,15 +783,19 @@ ci :
 
 # --- MakeMaker distmeta section:
 distmeta : create_distdir metafile
-	$(NOECHO) cd $(DISTVNAME) && $(ABSPERLRUN) -MExtUtils::Manifest=maniadd -e "eval {{ maniadd({{q{{META.yml} => q{{Module meta-data (added by MakeMaker)}}}) } \
-    or print \"Could not add META.yml to MANIFEST: $${{'@'}\n\"" --
+	$(NOECHO) cd $(DISTVNAME) && $(ABSPERLRUN) -MExtUtils::Manifest=maniadd -e "exit unless -e q{{META.yml}};\
+eval {{ maniadd({{q{{META.yml}} => q{{Module YAML meta-data (added by MakeMaker)}}}}) }}\
+    or print \"Could not add META.yml to MANIFEST: $${{'^@'}}\n\"" --
+	$(NOECHO) cd $(DISTVNAME) && $(ABSPERLRUN) -MExtUtils::Manifest=maniadd -e "exit unless -f q{{META.json}};\
+eval {{ maniadd({{q{{META.json}} => q{{Module JSON meta-data (added by MakeMaker)}}}}) }}\
+    or print \"Could not add META.json to MANIFEST: $${{'^@'}}\n\"" --
 
 
 
 # --- MakeMaker distsignature section:
 distsignature : create_distdir
-	$(NOECHO) cd $(DISTVNAME) && $(ABSPERLRUN) -MExtUtils::Manifest=maniadd -e "eval {{ maniadd({{q{{SIGNATURE} => q{{Public-key signature (added by MakeMaker)}}}) } \
-    or print \"Could not add SIGNATURE to MANIFEST: $${{'@'}\n\"" --
+	$(NOECHO) cd $(DISTVNAME) && $(ABSPERLRUN) -MExtUtils::Manifest=maniadd -e "eval {{ maniadd({{q{{SIGNATURE}} => q{{Public-key signature (added by MakeMaker)}}}}) }} \
+    or print \"Could not add SIGNATURE to MANIFEST: $${{'^@'}}\n\"" --
 	$(NOECHO) cd $(DISTVNAME) && $(TOUCH) SIGNATURE
 	cd $(DISTVNAME) && cpansign -s
 
@@ -784,7 +803,7 @@ distsignature : create_distdir
 
 # --- MakeMaker install section:
 
-install :: pure_install doc_install doc_update
+install :: pure_install doc_install
 	$(NOECHO) $(NOOP)
 
 install_perl :: pure_perl_install doc_perl_install
@@ -802,9 +821,6 @@ pure_install :: pure_$(INSTALLDIRS)_install
 doc_install :: doc_$(INSTALLDIRS)_install
 	$(NOECHO) $(NOOP)
 
-doc_update ::
-	$(NOECHO) $(PERLRUN) "-MActivePerl::DocTools" -e ActivePerl::DocTools::WriteTOC
-
 pure__install : pure_site_install
 	$(NOECHO) $(ECHO) INSTALLDIRS not defined, defaulting to INSTALLDIRS=site
 
@@ -820,8 +836,7 @@ pure_perl_install :: all
 		$(INST_BIN) $(DESTINSTALLBIN) \
 		$(INST_SCRIPT) $(DESTINSTALLSCRIPT) \
 		$(INST_MAN1DIR) $(DESTINSTALLMAN1DIR) \
-		$(INST_MAN3DIR) $(DESTINSTALLMAN3DIR) \
-		$(INST_HTMLDIR) $(DESTINSTALLHTMLDIR)
+		$(INST_MAN3DIR) $(DESTINSTALLMAN3DIR)
 	$(NOECHO) $(WARN_IF_OLD_PACKLIST) \
 		$(SITEARCHEXP)\auto\$(FULLEXT)
 
@@ -835,8 +850,7 @@ pure_site_install :: all
 		$(INST_BIN) $(DESTINSTALLSITEBIN) \
 		$(INST_SCRIPT) $(DESTINSTALLSITESCRIPT) \
 		$(INST_MAN1DIR) $(DESTINSTALLSITEMAN1DIR) \
-		$(INST_MAN3DIR) $(DESTINSTALLSITEMAN3DIR) \
-		$(INST_HTMLDIR) $(DESTINSTALLSITEHTMLDIR)
+		$(INST_MAN3DIR) $(DESTINSTALLSITEMAN3DIR)
 	$(NOECHO) $(WARN_IF_OLD_PACKLIST) \
 		$(PERL_ARCHLIB)\auto\$(FULLEXT)
 
@@ -849,8 +863,7 @@ pure_vendor_install :: all
 		$(INST_BIN) $(DESTINSTALLVENDORBIN) \
 		$(INST_SCRIPT) $(DESTINSTALLVENDORSCRIPT) \
 		$(INST_MAN1DIR) $(DESTINSTALLVENDORMAN1DIR) \
-		$(INST_MAN3DIR) $(DESTINSTALLVENDORMAN3DIR) \
-		$(INST_HTMLDIR) $(DESTINSTALLVENDORHTMLDIR)
+		$(INST_MAN3DIR) $(DESTINSTALLVENDORMAN3DIR)
 
 doc_perl_install :: all
 	$(NOECHO) $(ECHO) Appending installation info to $(DESTINSTALLARCHLIB)/perllocal.pod
@@ -886,7 +899,7 @@ doc_vendor_install :: all
 		>> $(DESTINSTALLARCHLIB)\perllocal.pod
 
 
-uninstall :: uninstall_from_$(INSTALLDIRS)dirs doc_update
+uninstall :: uninstall_from_$(INSTALLDIRS)dirs
 	$(NOECHO) $(NOOP)
 
 uninstall_from_perldirs ::
@@ -951,7 +964,7 @@ PERL_HDRS = \
 
 $(OBJECT) : $(PERL_HDRS)
 
-xs/Connection.c xs/OID.c xs/BSON.c xs/Async.c xs/Cursor.c : $(XSUBPPDEPS)
+xs/Mongo.c xs/MongoClient.c xs/OID.c xs/BSON.c xs/Cursor.c : $(XSUBPPDEPS)
 
 
 # --- MakeMaker makefile section:
@@ -1025,43 +1038,55 @@ testdb_static :: pure_all $(MAP_TARGET)
 # --- MakeMaker ppd section:
 # Creates a PPD (Perl Package Description) for a binary distribution.
 ppd :
-	$(NOECHO) $(ECHO) "<SOFTPKG NAME=\"$(DISTNAME)\" VERSION=\"0.45\">" > $(DISTNAME).ppd
+	$(NOECHO) $(ECHO) "<SOFTPKG NAME=\"$(DISTNAME)\" VERSION=\"0.503.2\">" > $(DISTNAME).ppd
 	$(NOECHO) $(ECHO) "    <ABSTRACT>Asynchronous Mongo Driver for Perl</ABSTRACT>" >> $(DISTNAME).ppd
-	$(NOECHO) $(ECHO) "    <AUTHOR>Florian Ragwitz &lt;rafl@debian.org&gt;, Kristina Chodorow &lt;kristina@10gen.com&gt;, Sergey Gorelov &lt;nyaknyan@gmail.com&gt;</AUTHOR>" >> $(DISTNAME).ppd
+	$(NOECHO) $(ECHO) "    <AUTHOR>Florian Ragwitz &lt;rafl@debian.org&gt;, Kristina Chodorow &lt;kristina@10gen.com&gt;, Mike Friedman &lt;mike.friedman@10gen.com&gt;</AUTHOR>" >> $(DISTNAME).ppd
 	$(NOECHO) $(ECHO) "    <IMPLEMENTATION>" >> $(DISTNAME).ppd
-	$(NOECHO) $(ECHO) "        <PERLCORE VERSION=\"5,008008,0,0\" />" >> $(DISTNAME).ppd
-	$(NOECHO) $(ECHO) "        <REQUIRE NAME=\"Any::Moose\" />" >> $(DISTNAME).ppd
+	$(NOECHO) $(ECHO) "        <PERLCORE VERSION=\"5,008004,0,0\" />" >> $(DISTNAME).ppd
 	$(NOECHO) $(ECHO) "        <REQUIRE NAME=\"Class::Method::Modifiers\" />" >> $(DISTNAME).ppd
 	$(NOECHO) $(ECHO) "        <REQUIRE NAME=\"Coro::\" />" >> $(DISTNAME).ppd
+	$(NOECHO) $(ECHO) "        <REQUIRE NAME=\"Coro::EV\" />" >> $(DISTNAME).ppd
 	$(NOECHO) $(ECHO) "        <REQUIRE NAME=\"DateTime::\" />" >> $(DISTNAME).ppd
+	$(NOECHO) $(ECHO) "        <REQUIRE NAME=\"Devel::GlobalDestruction\" />" >> $(DISTNAME).ppd
 	$(NOECHO) $(ECHO) "        <REQUIRE NAME=\"Digest::MD5\" />" >> $(DISTNAME).ppd
 	$(NOECHO) $(ECHO) "        <REQUIRE NAME=\"EV::\" />" >> $(DISTNAME).ppd
+	$(NOECHO) $(ECHO) "        <REQUIRE NAME=\"Module::Install\" />" >> $(DISTNAME).ppd
+	$(NOECHO) $(ECHO) "        <REQUIRE NAME=\"Moose::\" />" >> $(DISTNAME).ppd
+	$(NOECHO) $(ECHO) "        <REQUIRE NAME=\"Scalar::Util\" />" >> $(DISTNAME).ppd
 	$(NOECHO) $(ECHO) "        <REQUIRE NAME=\"Tie::IxHash\" />" >> $(DISTNAME).ppd
 	$(NOECHO) $(ECHO) "        <REQUIRE NAME=\"XSLoader::\" />" >> $(DISTNAME).ppd
 	$(NOECHO) $(ECHO) "        <REQUIRE NAME=\"boolean::\" />" >> $(DISTNAME).ppd
 	$(NOECHO) $(ECHO) "        <ARCHITECTURE NAME=\"MSWin32-x86-multi-thread-5.14\" />" >> $(DISTNAME).ppd
 	$(NOECHO) $(ECHO) "        <CODEBASE HREF=\"\" />" >> $(DISTNAME).ppd
 	$(NOECHO) $(ECHO) "    </IMPLEMENTATION>" >> $(DISTNAME).ppd
-	$(NOECHO) $(ECHO) "</SOFTPKG>" >> $(DISTNAME).ppd
+	$(NOECHO) $(ECHO) ^</SOFTPKG^> >> $(DISTNAME).ppd
 
 
 # --- MakeMaker pm_to_blib section:
 
 pm_to_blib : $(FIRST_MAKEFILE) $(TO_INST_PM)
-	$(NOECHO) $(ABSPERLRUN) -MExtUtils::Install -e "pm_to_blib({{@ARGV}, '$(INST_LIB)\auto', q[$(PM_FILTER)], '$(PERM_DIR)')" -- \
-	  lib/MongoDB/Async/Timestamp.pm blib\lib\MongoDB\Async\Timestamp.pm \
-	  bachmark.pl $(INST_LIB)\MongoDB\bachmark.pl \
+	$(NOECHO) $(ABSPERLRUN) -MExtUtils::Install -e "pm_to_blib({{@ARGV}}, '$(INST_LIB)\auto', q[$(PM_FILTER)], '$(PERM_DIR)')" -- \
+	  benchmark_compare.pl $(INST_LIB)\MongoDB\benchmark_compare.pl \
 	  lib/MongoDB/Async.pm blib\lib\MongoDB\Async.pm \
-	  lib/MongoDB/Async/GridFS/File.pm blib\lib\MongoDB\Async\GridFS\File.pm \
-	  lib/MongoDB/Async/Collection.pm blib\lib\MongoDB\Async\Collection.pm \
-	  lib/MongoDB/Async/Connection.pm blib\lib\MongoDB\Async\Connection.pm \
+	  lib/MongoDB/Async/DataTypes.pod blib\lib\MongoDB\Async\DataTypes.pod \
+	  lib/MongoDB/Async/Examples.pod blib\lib\MongoDB\Async\Examples.pod \
 	  lib/MongoDB/Async/Cursor.pm blib\lib\MongoDB\Async\Cursor.pm \
+	  lib/MongoDB/Async/GridFS.pm blib\lib\MongoDB\Async\GridFS.pm \
+	  lib/MongoDB/Async/Code.pm blib\lib\MongoDB\Async\Code.pm \
+	  lib/MongoDB/Async/Tutorial.pod blib\lib\MongoDB\Async\Tutorial.pod \
+	  lib/MongoDB/Async/BSON.pm blib\lib\MongoDB\Async\BSON.pm \
+	  lib/MongoDB/Async/Timestamp.pm blib\lib\MongoDB\Async\Timestamp.pm \
+	  threading_stress_test.pl $(INST_LIB)\MongoDB\threading_stress_test.pl \
+	  lib/MongoDB/Async/GridFS/File.pm blib\lib\MongoDB\Async\GridFS\File.pm \
+	  lib/MongoDB/Async/Indexing.pod blib\lib\MongoDB\Async\Indexing.pod \
+	  lib/MongoDB/Async/Connection.pm blib\lib\MongoDB\Async\Connection.pm \
+	  lib/MongoDB/Async/Collection.pm blib\lib\MongoDB\Async\Collection.pm \
+	  lib/MongoDB/Async/MongoClient.pm blib\lib\MongoDB\Async\MongoClient.pm \
 	  lib/MongoDB/Async/OID.pm blib\lib\MongoDB\Async\OID.pm \
 	  lib/MongoDB/Async/Database.pm blib\lib\MongoDB\Async\Database.pm \
-	  lib/MongoDB/Async/Code.pm blib\lib\MongoDB\Async\Code.pm \
-	  lib/MongoDB/Async/GridFS.pm blib\lib\MongoDB\Async\GridFS.pm \
-	  lib/MongoDB/Async/Pool.pm blib\lib\MongoDB\Async\Pool.pm \
-	  lib/MongoDB/Async/BSON.pm blib\lib\MongoDB\Async\BSON.pm 
+	  lib/MongoDB/Async/BSON/Binary.pm blib\lib\MongoDB\Async\BSON\Binary.pm 
+	$(NOECHO) $(ABSPERLRUN) -MExtUtils::Install -e "pm_to_blib({{@ARGV}}, '$(INST_LIB)\auto', q[$(PM_FILTER)], '$(PERM_DIR)')" -- \
+	  lib/MongoDB/Async/Pool.pm blib\lib\MongoDB\Async\Pool.pm 
 	$(NOECHO) $(TOUCH) pm_to_blib
 
 
@@ -1072,5 +1097,5 @@ pm_to_blib : $(FIRST_MAKEFILE) $(TO_INST_PM)
 
 
 # End.
-# Postamble by Module::Install 1.01
+# Postamble by Module::Install 1.06
 $(OBJECT) : perl_mongo.h

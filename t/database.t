@@ -2,6 +2,7 @@ use strict;
 use warnings;
 use Test::More;
 use Test::Exception;
+use Test::Warn;
 
 use MongoDB::Async::Timestamp; # needed if db is being run as master
 
@@ -13,17 +14,17 @@ eval {
     if (exists $ENV{MONGOD}) {
         $host = $ENV{MONGOD};
     }
-    $conn = MongoDB::Async::Connection->new(host => $host);
+    $conn = MongoDB::Async::MongoClient->new(host => $host, ssl => $ENV{MONGO_SSL});
 };
 
 if ($@) {
     plan skip_all => $@;
 }
 else {
-    plan tests => 15;
+    plan tests => 13;
 }
 
-isa_ok($conn, 'MongoDB::Async::Connection');
+isa_ok($conn, 'MongoDB::Async::MongoClient');
 
 my $db = $conn->get_database('test_database');
 $db->drop;
@@ -65,16 +66,10 @@ SKIP: {
     is($result->{err}, undef);
 }
 
-# autoload
-{
-    my $coll1 = $conn->foo->bar;
-    is($coll1->name, "bar");
-    is($coll1->full_name, "foo.bar");
-}
 
 END {
     if ($conn) {
-        $conn->foo->drop;
+        $conn->get_database( 'foo' )->drop;
     }
     if ($db) {
         $db->drop;

@@ -15,32 +15,16 @@
 #
 
 package MongoDB::Async::Timestamp;
-our $VERSION = '0.45';
+{
+  $MongoDB::Async::Timestamp::VERSION = '0.503.2';
+}
+
 
 # ABSTRACT: Replication timestamp
 
-=head1 NAME
 
-MongoDB::Async::Timestamp - Timestamp used for replication
+use Moose;
 
-=head1 SYNOPSIS
-
-This is an internal type used for replication.  It is not for storing dates,
-times, or timestamps in the traditional sense.  Unless you are looking to mess
-with MongoDB's replication internals, the class you are probably looking for is
-L<DateTime>.  See <MongoDB::Async::DataTypes> for more information.
-
-=cut
-
-use Mouse;
-
-=head1 ATTRIBUTES
-
-=head2 sec
-
-Seconds since epoch.
-
-=cut
 
 has sec => (
     is       => 'ro',
@@ -48,11 +32,6 @@ has sec => (
     required => 1,
 );
 
-=head2 inc
-
-Incrementing field.
-
-=cut
 
 has inc => (
     is       => 'ro',
@@ -61,3 +40,64 @@ has inc => (
 );
 
 1;
+
+__END__
+
+=pod
+
+=head1 NAME
+
+MongoDB::Async::Timestamp - Replication timestamp
+
+=head1 VERSION
+
+version 0.503.2
+
+=head1 SYNOPSIS
+
+This is an internal type used for replication.  It is not for storing dates,
+times, or timestamps in the traditional sense.  Unless you are looking to mess
+with MongoDB's replication internals, the class you are probably looking for is
+L<DateTime>.  See <MongoDB::Async::DataTypes> for more information.
+
+=head1 NAME
+
+MongoDB::Async::Timestamp - Timestamp used for replication
+
+=head1 ATTRIBUTES
+
+=head2 sec
+
+Seconds since epoch.
+
+=head2 inc
+
+Incrementing field.
+
+=head1 AUTHORS
+
+=over 4
+
+=item *
+
+Florian Ragwitz <rafl@debian.org>
+
+=item *
+
+Kristina Chodorow <kristina@mongodb.org>
+
+=item *
+
+Mike Friedman <mike.friedman@10gen.com>
+
+=back
+
+=head1 COPYRIGHT AND LICENSE
+
+This software is Copyright (c) 2012 by 10gen, Inc..
+
+This is free software, licensed under:
+
+  The Apache License, Version 2.0, January 2004
+
+=cut
