@@ -16,7 +16,7 @@
 
 package MongoDB::Async::BSON::Binary;
 {
-  $MongoDB::Async::BSON::Binary::VERSION = '0.503.2';
+  $MongoDB::Async::BSON::Binary::VERSION = '0.702.2';
 }
 
 
@@ -63,7 +63,7 @@ MongoDB::Async::BSON::Binary - Binary type
 
 =head1 VERSION
 
-version 0.503.2
+version 0.702.2
 
 =head1 SYNOPSIS
 

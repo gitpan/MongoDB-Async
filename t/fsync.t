@@ -29,13 +29,15 @@ my $ret = $conn->fsync();
 is($ret->{ok},              1, "fsync returned 'ok' => 1");
 is(exists $ret->{numFiles}, 1, "fsync returned 'numFiles'");
 
-SKIP: {
-	skip('async fsync not supported on windows', 2) if $^O=~m/Win/i;
-	# Test async fsync.
-	$ret = $conn->fsync({async => 1});
-	is($ret->{ok},              1, "fsync + async returned 'ok' => 1");
-	is(exists $ret->{numFiles}, 1, "fsync + async returned 'numFiles'");
+# Test async fsync.
+$ret = $conn->fsync({async => 1});
+SKIP: { 
+    $ret =~ s/exception: //, warn($ret), skip $ret, 2 if $ret =~ /not supported/;
+
+    is($ret->{ok},              1, "fsync + async returned 'ok' => 1");
+    is(exists $ret->{numFiles}, 1, "fsync + async returned 'numFiles'");
 }
+
 # Test fsync with lock.
 $ret = $conn->fsync({lock => 1});
 is($ret->{ok},              1, "fsync + lock returned 'ok' => 1");

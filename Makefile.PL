@@ -11,12 +11,20 @@ author 'Mike Friedman <mike.friedman@10gen.com>';
 license 'Apache';
 all_from 'lib/MongoDB/Async.pm';
 
-foreach (@ARGV){
-    next unless($_ eq '--ssl');
-    cc_lib_links('ssl', 'crypto');
-    cc_optimize_flags("-DMONGO_SSL");
-    last;
+my (@cc_lib_links, @cc_optimize_flags);
+
+if ( $ENV{PERL_MONGODB_WITH_SSL} || grep { $_ eq '--ssl' } @ARGV ) {
+    push @cc_lib_links, 'ssl', 'crypto';
+    push @cc_optimize_flags, '-DMONGO_SSL';
 }
+
+if ( $ENV{PERL_MONGODB_WITH_SASL} || grep { $_ eq '--sasl' } @ARGV ) {
+    push @cc_lib_links, 'gsasl';
+    push @cc_optimize_flags, '-DMONGO_SASL';
+}
+
+cc_lib_links( @cc_lib_links ) if @cc_lib_links;
+cc_optimize_flags( @cc_optimize_flags ) if @cc_optimize_flags;
 
 requires 'Module::Install';
 requires 'Moose';

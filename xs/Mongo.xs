@@ -179,21 +179,23 @@ read_documents(sv)
          buf.end = buf.start + SvCUR(sv);
 
          while(buf.pos < buf.end) {
-             XPUSHs(sv_2mortal(perl_mongo_bson_to_sv(&buf)));
+             XPUSHs(sv_2mortal(perl_mongo_bson_to_sv(&buf, newSV(0) )));
          }
 
 
-
-
-int
-_test_is_utf8(input)
-        SV *input
+void
+force_double(input)
+	SV *input
     CODE:
-        /* exposed for testing only */
-        STRLEN len;
-        char *str = SvPV( input, len );
-        int ret = isUTF8(str, len);
-        RETVAL = ret;
-    OUTPUT:
-        RETVAL
+	if (SvROK(input)) croak("Can't force a reference into a double");
+	SvNV(input);
+	SvNOK_only(input);
+
+void
+force_int(input)
+	SV *input
+    CODE:
+	if (SvROK(input)) croak("Can't force a reference into an int");
+	SvIV(input);
+	SvIOK_only(input);
 

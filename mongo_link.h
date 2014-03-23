@@ -128,6 +128,14 @@ typedef struct {
 	SV *coro;
 } mongo_async_sock_reader_state;
 
+typedef struct {
+	ev_io w;
+	char *buffer;
+	int len;
+	int done;
+	SV *coro;
+} mongo_async_sockwatcher_state;
+
  
 typedef struct _mongo_server {
   char *host;
@@ -135,7 +143,8 @@ typedef struct _mongo_server {
   int socket;
   int connected;
   
-  mongo_async_sock_reader_state sockreader; // for async receiver
+  mongo_async_sockwatcher_state sockwatcher;
+  
 } mongo_server;
 
 
@@ -204,7 +213,7 @@ void tcp_setup(mongo_link* link);
 void ssl_connect(mongo_link* link);
 void ssl_disconnect (mongo_link *link);
 int ssl_send(void* link, const char* buffer, size_t len);
-int ssl_recv(void* link, const char* buffer, size_t len);
+int ssl_recv(mongo_link* link, void *dest, int len);
 #endif
 
 int non_ssl_send(void* link, const char* buffer, size_t len);

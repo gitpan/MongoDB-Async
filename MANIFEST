@@ -56,9 +56,7 @@ t/fsync.t
 t/gridfs.t
 t/img.png
 t/input.txt
-t/isUTF8.t
 t/memtest.pl
-t/old_conn_collection.t
 t/old_conn_connection.t
 t/old_conn_database.t
 t/old_conn_regex.t

@@ -83,7 +83,6 @@ MGVTBL cursor_vtbl = {
 
 static mongo_cursor* get_cursor(SV *self);
 static int has_next(SV *self, mongo_cursor *cursor, int limit);
-static SV * next(SV *self, mongo_cursor *cursor, int limit );
 
 static void kill_cursor(SV *self);
 
@@ -91,8 +90,21 @@ static mongo_cursor* get_cursor(SV *self) {
 	mongo_cursor *cursor = (mongo_cursor*)perl_mongo_get_ptr_from_instance(self, &cursor_vtbl);
 	// printf("----------started %d \n", cursor->started_iterating);
 	if(!cursor->started_iterating){
-		perl_mongo_call_method(self, "_do_query", G_DISCARD, 0);
+		SV* link = perl_mongo_call_reader (self, "_client");
 		
+		SV *query = perl_mongo_call_method (self, "_do_query", 0, 0);
+		
+		buffer buf;
+        STRLEN len;
+    
+        buf.start = SvPV(query,len);
+        buf.pos = buf.start+len;
+        buf.end = buf.start+len;
+		 
+         if (mongo_link_say(link, &buf) == -1) {
+           croak("can't get db response, not connected");
+        }
+		 
 		mongo_link_hear(self);
 		
 		cursor->started_iterating = 1;
@@ -157,10 +169,12 @@ static int has_next(SV *self, mongo_cursor *cursor, int limit) {
   return heard > 0;
 }
 
-static SV * next(SV *self, mongo_cursor *cursor, int limit ) {
+static SV * next(SV *self, mongo_cursor *cursor, int limit, SV* client_sv ) {
+		
+		
 	if ( has_next( self, cursor, limit ) ) {
-		  
-		SV *ret = perl_mongo_bson_to_sv(&cursor->buf);
+		 
+		SV *ret = perl_mongo_bson_to_sv( &cursor->buf, client_sv );
 		
 		cursor->at++;
 		
@@ -227,6 +241,7 @@ _init (self)
 		SV *self
 	PREINIT:
 		mongo_cursor *cursor;
+		
 	CODE:
 		Newxz(cursor, 1, mongo_cursor);
 
@@ -252,7 +267,9 @@ next (self)
     PREINIT:
         mongo_cursor *cursor;
     CODE:
-		RETVAL = next(self, get_cursor(self) , SvIV( perl_mongo_call_reader(self, "_limit") ) ); 
+		SV *client_sv           = perl_mongo_call_reader( self, "_client" );
+		
+		RETVAL = next(self, get_cursor(self) , SvIV( perl_mongo_call_reader(self, "_limit") ),client_sv ); 
 		if(!RETVAL){
 			RETVAL = newSV(0);
 		}
@@ -290,7 +307,10 @@ data (self)
 		int limit = SvIV( perl_mongo_call_reader(self, "_limit") );
 		AV *ret = newAV();
 		
-		while(nextval = next(self, cursor, limit) ){
+		
+		SV *client_sv           = perl_mongo_call_reader( self, "_client" );
+		
+		while(nextval = next(self, cursor, limit, client_sv) ){
 			av_push(ret, nextval);
 		};
 		

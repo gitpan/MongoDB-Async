@@ -16,7 +16,7 @@
 
 package MongoDB::Async::MongoClient;
 {
-  $MongoDB::Async::MongoClient::VERSION = '0.503.2';
+  $MongoDB::Async::MongoClient::VERSION = '0.702.2';
 }
 
 # ABSTRACT: A connection to a Mongo server
@@ -31,8 +31,10 @@ use Carp;
 use boolean;
 use Devel::GlobalDestruction;
 
-no strict 'refs';
+use Scalar::Util 'reftype';
+use Encode;
 
+no strict 'refs';
 
 
 has host => (
@@ -70,26 +72,18 @@ has port => (
 
 
 has auto_reconnect => (
-    is       => 'rw',
+    is       => 'ro',
     isa      => 'Bool',
     required => 1,
     default  => 1,
 );
 
 has auto_connect => (
-    is       => 'rw',
+    is       => 'ro',
     isa      => 'Bool',
     required => 1,
     default  => 1,
 );
-
-has retry_count => (
-    is       => 'rw',
-    isa      => 'Int',
-    required => 1,
-    default  => 2,
-);
-
 
 has timeout => (
     is       => 'ro',
@@ -148,6 +142,19 @@ has ssl => (
     default  => 0,
 );
 
+has sasl => ( 
+    is       => 'ro',
+    isa      => 'Bool',
+    required => 1,
+    default  => 0
+);
+
+has sasl_mechanism => ( 
+    is       => 'ro',
+    isa      => subtype( Str => where { /^GSSAPI|PLAIN$/ } ),
+    required => 1,
+    default  => 'GSSAPI',
+);
 
 # hash of servers in a set
 # call connected() to determine if a connection is enabled
@@ -160,7 +167,7 @@ has _servers => (
 # actual connection to a server in the set
 has _master => (
     is       => 'rw',
-#    isa      => 'MongoDB::Async::Connection',
+#    isa      => 'MongoDB::Connection',
     required => 0,
 );
 
@@ -170,6 +177,12 @@ has ts => (
     default => 0
 );
 
+has inflate_dbrefs => (
+    is        => 'rw',
+    isa       => 'Bool',
+    required  => 0,
+    default   => 1
+);
 
 
 
@@ -272,6 +285,32 @@ sub BUILD {
     # create a struct that just points to the master's connection
     $self->_init_conn_holder($master);
 }
+
+
+sub _create_socket {
+	my ($self, $host, $port) = @_;
+	# todo
+}
+
+sub connect {
+	my ($self) = @_;
+	
+	$self->_connect(); # call xs
+	
+	# sasl unsupported here
+	if($self->{username} and  $self->{password}){
+		my $r = $self->authenticate( $self->{db_name}, $self->{username}, $self->{password} );
+		
+		if((ref($r) ne 'HASH') or $r->{ok} != 1){
+			croak("Auth error $r \n");
+		}
+	}
+};
+
+
+
+
+
 
 sub _get_max_bson_size {
     my $self = shift;
@@ -435,7 +474,7 @@ sub authenticate {
 sub fsync {
     my ($self, $args) = @_;
 	
-	$args //= {};
+	$args ||= {};
 	
     # Pass this in as array-ref to ensure that 'fsync => 1' is the first argument.
     return $self->get_database('admin')->run_command([fsync => 1, %$args]);
@@ -448,19 +487,72 @@ sub fsync_unlock {
     return $self->get_database('admin')->get_collection('$cmd.sys.unlock')->find_one();
 }
 	
+sub _w_want_safe { 
+    my ( $self ) = @_;
 
+    my $w = $self->w;
 
-sub send {
-	my($self, $query) = @_;
-	my ($result);
-	
-	for( 1...($self->{retry_count}+1) ){
-		return $result if ($result = $self->_send($query)) != -1;
-		$self->connect if $self->{auto_reconnect};
-	}
-	
-    croak("can't get db response, not connected");
+    return 0 if $w =~ /^-?\d+$/ && $w <= 0;
+    return 1;
 }
+
+sub _sasl_check { 
+    my ( $self, $res ) = @_;
+
+    die "Invalid SASL response document from server:"
+        unless reftype $res eq reftype { };
+
+    if ( $res->{ok} != 1 ) { 
+        die "SASL authentication error: $res->{errmsg}";
+    }
+
+    return $res->{conversationId};
+}
+
+sub _sasl_start { 
+    my ( $self, $payload, $mechanism ) = @_;
+
+    # warn "SASL start, payload = [$payload], mechanism = [$mechanism]\n";
+
+    my $res = $self->get_database( '$external' )->run_command( [ 
+        saslStart     => 1,
+        mechanism     => $mechanism,
+        payload       => $payload,
+        autoAuthorize => 1 ] );
+
+    $self->_sasl_check( $res );
+    return $res;
+}
+
+
+sub _sasl_continue { 
+    my ( $self, $payload, $conv_id ) = @_;
+
+    # warn "SASL continue, payload = [$payload], conv ID = [$conv_id]";
+
+    my $res = $self->get_database( '$external' )->run_command( [ 
+        saslContinue     => 1,
+        conversationId   => $conv_id,
+        payload          => $payload
+    ] );
+
+    $self->_sasl_check( $res );
+    return $res;
+}
+
+
+sub _sasl_plain_authenticate { 
+    my ( $self ) = @_;
+
+    my $username = defined $self->username ? $self->username : "";
+    my $password = defined $self->password ? $self->password : ""; 
+
+    my $auth_bytes = encode( "UTF-8", "\x00" . $username . "\x00" . $password );
+    my $payload = MongoDB::BSON::Binary->new( data => $auth_bytes ); 
+
+    $self->_sasl_start( $payload, "PLAIN" );    
+} 
+
 	
 sub DESTROY {
 	my ($self) = @_;;
@@ -494,6 +586,9 @@ sub AUTOLOAD {
 use strict;
 
 
+sub dt_type {
+	$MongoDB::Async::BSON::dt_type = $_[1];
+}
 
 
 __PACKAGE__->meta->make_immutable (inline_destructor => 0);
@@ -510,7 +605,7 @@ MongoDB::Async::MongoClient - A connection to a Mongo server
 
 =head1 VERSION
 
-version 0.503.2
+version 0.702.2
 
 =head1 SYNOPSIS
 

@@ -25,32 +25,36 @@ void mongo_get_coro_ev_api(void) {
 	I_EV_API ("MongoDB::Async");
 }
 
-static void ev_sock_reader_cb (struct ev_loop *loop, ev_io *w, int revents){
-	mongo_async_sock_reader_state *state = (mongo_async_sock_reader_state *)w;
-	int temp_len = (state->len - state->read) > 4096 ? 4096 : (state->len - state->read);
+static void ev_sockwatcher_cb (struct ev_loop *loop, ev_io *w, int revents){
+	mongo_async_sockwatcher_state *state = (mongo_async_sockwatcher_state *)w;
+	int temp_len = (state->len - state->done) > 4096 ? 4096 : (state->len - state->done);
 	int num;
     // windows gives a WSAEFAULT if you try to get more bytes
 	 //do {
-		num = recv(w->fd, (char*)state->buffer, temp_len, 0);
+		if(revents & EV_WRITE){
+			num = send(w->fd, (char*)state->buffer, temp_len, 0);
+		}else{
+			num = recv(w->fd, (char*)state->buffer, temp_len, 0);
+		}
+		
+		
 		state->buffer = (char*)state->buffer + num;
-		state->read += num;
-	 //} while( (num == 4096) && (state->read < state->len) );
+		state->done += num;
+	 //} while( (num == 4096) && (state->done < state->len) );
 	
 	if(num < 0){
 		state->len = -1;
-		state->read = -1;
+		state->done = -1;
 	}
 	
-	if( state->read >= state->len ){
+	if( state->done >= state->len ){
 		state->len = 0;
 		ev_io_stop(EV_DEFAULT, w);
-		//printf("recv %d\n",state->read);
+		// printf("recv %d\n",state->done);
 		CORO_READY(state->coro);
 		SvREFCNT_dec(state->coro);
 	}
 }
-
-
 
 
 
@@ -190,9 +194,7 @@ void non_ssl_connect(mongo_link* link) {
   link->master->connected = 1;
   
   // init ev watcher
-	ev_io_init (&link->master->sockreader.w, ev_sock_reader_cb, sock, EV_READ);
-	link->master->sockreader.buffer = (char *)0; 
-  
+	link->master->sockwatcher.buffer = (char *)0;
   
   return;
 }
@@ -250,7 +252,7 @@ int ssl_recv(mongo_link* link, void *dest, int len) {
 	int temp_len = (len - read) > 4096 ? 4096 : (len - read);
 
 	// windows gives a WSAEFAULT if you try to get more bytes
-	num = SSL_read(((mongo_link*)link)->ssl_handle, (void*)dest, temp_len)
+	num = SSL_read(((mongo_link*)link)->ssl_handle, (void*)dest, temp_len);
 	if (num < 0) {
 	  return -1;
 	}
@@ -264,49 +266,45 @@ int ssl_recv(mongo_link* link, void *dest, int len) {
 
 #endif
 
-int non_ssl_send(void* link, const char* buffer, size_t len){
-  return send(((mongo_link*)link)->master->socket, buffer, len, 0);
-}
 
+static int _make_async_mongo_io(void* link, const char* buffer, size_t len, int revent){
+	mongo_async_sockwatcher_state *state = &( ((mongo_link*)link)->master->sockwatcher );
 
-int non_ssl_recv(void* link, const char* buffer, size_t len){
-
-	// return recv(((mongo_link*)link)->master->socket, (void*)buffer, len, 0);
-  
-	mongo_async_sock_reader_state *state = &( ((mongo_link*)link)->master->sockreader );
-
-	//printf("%d %d %d |%d %d\n",link, &(link->sockreader), &(link->sockreader.w), dest, len);
-	
 	if(state->buffer){
 		croak("Two queries to one connection at same time. Use MongoDB::Async::Pool");
 	}
 	
 	state->buffer = (char *)buffer;
 	state->len = len;
-	state->read = 0;
+	state->done = 0;
 	
 	if(state->len){
+		ev_io_init (& ((mongo_link*)link)->master->sockwatcher.w, ev_sockwatcher_cb, ((mongo_link*)link)->master->socket, revent);
 		ev_io_start (EV_DEFAULT, &state->w);
 		
 		state->coro = CORO_CURRENT;
 		SvREFCNT_inc(state->coro);
 	};
 	
-	while(state->len > 0 && state->read >= 0){
-	// printf("\n");
+	while(state->len > 0 && state->done >= 0){
 		CORO_SCHEDULE;
-		//ev_sock_reader_cb ((struct ev_loop *)0, &state->w, 0);
 	}
 	
 	state->buffer = (char *) 0;
 	
-	//printf("return %d\n",state.read);
-	return state->read;
+	return state->done;
 }
 
 
+int non_ssl_send(void* link, const char* buffer, size_t len){
+	// return send(((mongo_link*)link)->master->socket, buffer, len, 0);
+	return _make_async_mongo_io(link, buffer, len, EV_WRITE ); //TODO
+}
 
 
+int non_ssl_recv(void* link, const char* buffer, size_t len){
+	return _make_async_mongo_io(link, buffer, len, EV_READ );
+}
 
 
 static int mongo_link_timeout(int sock, time_t to) {
@@ -650,6 +648,9 @@ int perl_mongo_master(SV *link_sv, int auto_reconnect) {
   if (link->master && link->master->connected) {
       return link->master->socket;
   }
+  
+  //TODO: Make coro threads for calling connect and get_master, here just set threads to ready state. Because callings perl functions may break perl's stack when perl function switches coro's and returns in this function but in other thread. 
+  
   // if we didn't have a connection above and this isn't a connection holder
   if (!link->copy) {
       // if this is a real connection, try to reconnect

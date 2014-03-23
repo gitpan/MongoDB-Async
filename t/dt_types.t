@@ -22,11 +22,12 @@ if ($@) {
     plan skip_all => $@;
 }
 else {
-    plan tests => 8;
+    plan tests => 20;
 }
 
 my $db = $conn->get_database('test_database');
 $db->drop;
+
 
 my $now = DateTime->now;
 {
@@ -40,7 +41,7 @@ my $now = DateTime->now;
 
 {
     $db->get_collection( 'test_collection' )->insert( { date => $now } );
-    $MongoDB::Async::BSON::dt_type =  undef ;
+    $conn->dt_type( undef );
     my $date3 = $db->get_collection( 'test_collection' )->find_one->{date};
     ok( not ref $date3 );
     is $date3, $now->epoch;
@@ -50,7 +51,7 @@ my $now = DateTime->now;
 
 {
     $db->get_collection( 'test_collection' )->insert( { date => $now } );
-    $MongoDB::Async::BSON::dt_type = 'DateTime::Tiny' ;
+    $conn->dt_type( 'DateTime::Tiny' );
     my $date2 = $db->get_collection( 'test_collection' )->find_one->{date};
     isa_ok( $date2, 'DateTime::Tiny' );
     is $date2->DateTime->epoch, $now->epoch;
@@ -61,7 +62,7 @@ my $now = DateTime->now;
 # roundtrips
 
 {
-    $MongoDB::Async::BSON::dt_type =  'DateTime' ;
+    $conn->dt_type( 'DateTime' );
     my $coll = $db->get_collection( 'test_collection' );
     $coll->insert( { date => $now } );
     my $doc = $coll->find_one;
@@ -72,21 +73,50 @@ my $now = DateTime->now;
 
     my $doc2 = $coll->find_one;
     is( $doc2->{date}->epoch, ( $now->epoch + 60 ) );
+    $db->drop;
 }
 
 
 {
-    $MongoDB::Async::BSON::dt_type = 'DateTime::Tiny' ;
+    $conn->dt_type( 'DateTime::Tiny' );
     my $dtt_now = DateTime::Tiny->now;
     my $coll = $db->get_collection( 'test_collection' );
     $coll->insert( { date => $dtt_now } );
     my $doc = $coll->find_one;
 
-    $doc->{date} = DateTime::Tiny->from_string( $doc->{date}->DateTime->add( seconds => 60 )->iso8601 );
+    is $doc->{date}->year,   $dtt_now->year;
+    is $doc->{date}->month,  $dtt_now->month;
+    is $doc->{date}->day,    $dtt_now->day;
+    is $doc->{date}->hour,   $dtt_now->hour;
+    is $doc->{date}->minute, $dtt_now->minute;
+    is $doc->{date}->second, $dtt_now->second;
+
+    $doc->{date} = DateTime::Tiny->from_string( $doc->{date}->DateTime->add( seconds => 30 )->iso8601 );
     $coll->update( { _id => $doc->{_id} }, $doc );
 
     my $doc2 = $coll->find_one( { _id => $doc->{_id} } );
 
-    is( $doc2->{date}->DateTime->epoch, ( $now->epoch + 60 ) );
+    is( $doc2->{date}->DateTime->epoch, $dtt_now->DateTime->epoch + 30 );
+    $db->drop;
 }
+
+{
+    # test fractional second roundtrip
+    $conn->dt_type( 'DateTime' );
+    my $coll = $db->get_collection( 'test_collection' );
+    my $now = DateTime->now;
+    $now->add( nanoseconds => 500_000_000 );
+    
+    $coll->insert( { date => $now } );
+    my $doc = $coll->find_one;
+
+    is $doc->{date}->year,       $now->year;
+    is $doc->{date}->month,      $now->month;
+    is $doc->{date}->day,        $now->day;
+    is $doc->{date}->hour,       $now->hour;
+    is $doc->{date}->minute,     $now->minute;
+    is $doc->{date}->second,     $now->second;
+    # is $doc->{date}->nanosecond, $now->nanosecond;
+}
+
 

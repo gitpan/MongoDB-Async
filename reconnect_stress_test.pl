@@ -11,7 +11,7 @@ use Coro::AnyEvent;
 
 
 use MongoDB::Async;
-my $dba = MongoDB::Async::Connection->new({"host" => "mongodb://127.0.0.1"})->test->test;
+my $dba = MongoDB::Async::Connection->new({"host" => "mongodb://127.0.0.1", ssl => 1 })->test->test;
 
 
 my $doc = {
@@ -43,7 +43,7 @@ my $doc = {
 
 $dba->drop();
 
-my $numofdoc = 5000;
+my $numofdoc = 50;
 for(0...$numofdoc){
 	$dba->save($doc); $doc->{_id}++;
 }
@@ -59,27 +59,20 @@ my $writes = 0;
 	# }
 # };
 
-new_threads() for 1...1000;
+new_threads() for 1...100;
 sub new_threads {
 	print "$reads reads and $writes writes\r";
-
 	async {
-		my $db = MongoDB::Async::Connection->new({"host" => "mongodb://127.0.0.1"});
-		
-		while(1){
-			$doc->{_id} = int rand($numofdoc);
-			$db->get_database('test')->get_collection( 'test' )->save($doc, {safe => 1 }); # safe switches coroutines
-			$writes++;
-			print "$reads reads and $writes writes. Ready coros: ".Coro::nready."\r";
+		while(){
+			my $db = MongoDB::Async::Connection->new({"host" => "mongodb://127.0.0.1" });
 			
-			
-			$db->get_database('test')->get_collection( 'test' )->find({})->all;
-			$reads++;
-			print "$reads reads and $writes writes. Ready coros: ".Coro::nready."\r";
-			
-			# Coro::AnyEvent::sleep 0.01;
-			
+			for (1..2){
+				$db->get_database('test')->get_collection( 'test' )->find({})->all;
+				$reads++;
+				print "$reads reads and $writes writes. Ready coros: ".Coro::nready."\r";
+			}
 		}
+		
 	};
 }
 

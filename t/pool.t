@@ -80,7 +80,7 @@ async {
 		$pool->get->driver_test_db->d_test_coll->drop();
 		
 		# is($max_running, 3, 'max_conn blocks coro');
-		# TODO: write tests for testing timeout and max_conns. I tested it manually and i seems OK
+		# TODO: write tests for testing timeout and max_conns. I tested it manually and it seems OK
 		
 		
 		# global destruction not detected when running make test. Cleanup

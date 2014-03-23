@@ -1,5 +1,0 @@
-LIBRARY "Async2"
-EXPORTS
-  boot_MongoDB__Async2
-  _boot_MongoDB__Async2 = boot_MongoDB__Async2
-  

@@ -25,7 +25,7 @@ if ($@) {
     plan skip_all => $@;
 }
 else {
-    plan tests => 74;
+    plan tests => 75;
 }
 
 my $db = $conn->get_database('foo');
@@ -116,18 +116,15 @@ my $c = $db->get_collection('bar');
 {
     $c->drop;
 
-    # should convert invalid utf8 to valid
-    my $invalid = "\xFE";
-    $c->insert({char => $invalid});
+    # latin1
+    $c->insert({char => "\xFE"});
     my $x =$c->find_one;
-    # now that the utf8 flag is set, it converts it back to a single char for
-    # unknown reasons
     is($x->{char}, "\xFE");
 
     $c->remove;
 
-    # should be the same with valid utf8
-    my $valid = "\xE6\xB5\x8B\xE8\xAF\x95";
+    # non-latin1
+    my $valid = "\x{8D4B}\x{8BD5}";
     $c->insert({char => $valid});
     $x = $c->find_one;
 
@@ -237,8 +234,11 @@ package main;
 
 # warn on floating timezone
 {
+	my $warned = 0;
+	local $SIG{__WARN__} = sub { if ($_[0] =~ /floating/) { $warned = 1; } else { warn(@_); } };
     my $date = DateTime->new(year => 2010, time_zone => "floating");
     $c->insert({"date" => $date});
+	is($warned, 1, "warn on floating timezone");
 }
 
 # half-conversion to int type
@@ -247,8 +247,10 @@ package main;
 
     my $var = 'zzz';
     # don't actually change it to an int, but add pIOK flag
-    $var = int($var) if (int($var) eq $var);
-
+	{ no warnings 'numeric';
+		$var = int($var) if (int($var) eq $var);
+	}
+	
     $c->insert({'key' => $var});
     my $v = $c->find_one;
 
@@ -264,8 +266,10 @@ package main;
     my $size = Person->new( size => 11.5 )->size;
 
     # add pIOK flag (IV is 11)
-    int($size);
-
+	{ no warnings 'numeric';
+		int($size);
+	}
+	
     $c->insert({'key' => $size});
     my $v = $c->find_one;
 

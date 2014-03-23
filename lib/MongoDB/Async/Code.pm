@@ -16,7 +16,7 @@
 
 package MongoDB::Async::Code;
 {
-  $MongoDB::Async::Code::VERSION = '0.503.2';
+  $MongoDB::Async::Code::VERSION = '0.702.2';
 }
 
 
@@ -51,7 +51,7 @@ MongoDB::Async::Code - JavaScript Code
 
 =head1 VERSION
 
-version 0.503.2
+version 0.702.2
 
 =head1 NAME
 

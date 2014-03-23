@@ -116,9 +116,8 @@ _init_conn(self, host, port, ssl)
      * hosts are of the form:
      * [{host => "host", port => 27017}, ...]
      */
-    Newx(link->master, 1, mongo_server);
-    Newxz(link->master->host, strlen(host)+1, char);
-    memcpy(link->master->host, host, strlen(host));
+     Newx(link->master, 1, mongo_server);
+    link->master->host = savepv(host);
     link->master->port = port;
     link->master->connected = 0;
     link->ssl = ssl;
@@ -157,23 +156,31 @@ _init_conn_holder(self, master)
     self_link->receiver = master_link->receiver;
 
 void
-connect (self)
+_connect (self)
      SV *self
    PREINIT:
      mongo_link *link = (mongo_link*)perl_mongo_get_ptr_from_instance(self, &connection_vtbl);
      SV *username, *password;
+	 IV sasl_flag;
    CODE:
     perl_mongo_connect(link);
+	// perl_mongo_connect(self, link);
 
      if (!link->master->connected) {
        croak ("couldn't connect to server %s:%d", link->master->host, link->master->port);
      }
 
-     // try authentication
+     // try legacy authentication if we have username and password but are not using SASL 
+	 
+	 
+	 /* //moved to perl
+	 
+	 
      username = perl_mongo_call_reader (self, "username");
      password = perl_mongo_call_reader (self, "password");
+     sasl_flag = SvIV( perl_mongo_call_reader( self, "sasl" ) );
 
-     if (SvPOK(username) && SvPOK(password)) {
+     if ( ( sasl_flag == 0 ) && SvPOK(username) && SvPOK(password)) {
        SV *database, *result, **ok;
 
        database = perl_mongo_call_reader (self, "db_name");
@@ -194,7 +201,7 @@ connect (self)
          croak("something weird happened with authentication");
        }
 
-     }
+     }*/
 
 
 
@@ -217,7 +224,7 @@ connected(self)
 
 
 int
-_send(self, str)
+send(self, str)
          SV *self
          SV *str
      PREINIT:
@@ -229,6 +236,9 @@ _send(self, str)
          buf.end = buf.start+len;
      CODE:
          RETVAL = mongo_link_say(self, &buf);
+         if (RETVAL == -1) {
+           die("can't get db response, not connected");
+         }
      OUTPUT:
          RETVAL
 
@@ -251,3 +261,18 @@ _DESTROY (self)
          if (!link->copy && link->master) {
            set_disconnected(self);
          }
+
+SV *
+_compile_flags(self)
+        SV *self
+    CODE:
+        HV *flags = newHV();
+#ifdef MONGO_SSL
+        hv_store( flags, "--ssl",  5, newSViv( 1 ), 0 );
+#endif
+#ifdef MONGO_SASL
+        hv_store( flags, "--sasl", 6, newSViv( 1 ), 0 );
+#endif
+        RETVAL = newRV_noinc( flags );
+    OUTPUT:
+        RETVAL

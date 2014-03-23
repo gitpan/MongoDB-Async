@@ -16,7 +16,7 @@
 
 package MongoDB::Async::OID;
 {
-  $MongoDB::Async::OID::VERSION = '0.503.2';
+  $MongoDB::Async::OID::VERSION = '0.702.2';
 }
 
 # ABSTRACT: A Mongo Object ID
@@ -36,26 +36,17 @@ sub new {
 	$self;
 }
 
-sub value {
-	$self = shift;
-	$self->{value};
-}
+sub value {$_[0]->{value}}
 *to_string = \&value;
 
 
 
 sub get_time {
-    my ($self) = @_;
-
-    my $ts = 0;
-    for (my $i = 0; $i<4; $i++) {
-        $ts = ($ts * 256) + hex(substr($self->value, $i*2, 2));
-    }
-    return $ts;
+    return hex(substr($_[0]->{value}, 0, 8));
 }
 
 
-sub TO_JSON { {'$oid' => $_[0]->value} }
+sub TO_JSON { {'$oid' => $_[0]->{value}} }
 
 use overload
     '""' => \&to_string,
@@ -74,7 +65,7 @@ MongoDB::Async::OID - A Mongo Object ID
 
 =head1 VERSION
 
-version 0.503.2
+version 0.702.2
 
 =head1 SYNOPSIS
 

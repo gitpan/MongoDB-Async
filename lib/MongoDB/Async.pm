@@ -20,7 +20,7 @@ use warnings;
 
 package MongoDB::Async;
 {
-  $MongoDB::Async::VERSION = '0.503.2';
+  $MongoDB::Async::VERSION = '0.702.2';
 }
 # ABSTRACT: A Mongo Driver for Perl
 
@@ -29,6 +29,10 @@ use MongoDB::Async::Connection;
 use MongoDB::Async::MongoClient;
 use MongoDB::Async::Database;
 use MongoDB::Async::Collection;
+
+use MongoDB::Async::DBRef;
+# use MongoDB::Async::OID;
+
 use EV;
 use Coro;
 use Coro::EV;
@@ -48,8 +52,6 @@ MongoDB::Async - Asynchronous Mongo Driver for Perl
 
 =head1 ABOUT ASYNC DRIVER
 
-This driver uses L<Coro> and L<EV>. It switches to another Coro thread while waiting response from server. Sending isn't async, but usually this is not a problem, because send() doesnt block untill you fill kernel's send buffer, this myght happen if you save large docs and connection is very slow. Adding send watchers will only add excess overhead.
-
 Changes relative to L<MongoDB>:
 
 L<MongoDB::Async::Pool> - pool of persistent connects
@@ -58,15 +60,34 @@ Added ->data method to L<MongoDB::Async::Cursor>. Same as ->all, but returns arr
 
 dt_type now $MongoDB::Async::BSON::dt_type global variable, not connection object property 
 
-This module is 20-100% (in single-(coro)threaded test , mutitreaded will be even faster) faster than original L<MongoDB>. See benchmark L<http://pastebin.com/vFWENzW7> or run benchmark_compare.pl from archive. It might be 1-5% slower than original on many small queries(overhead to start and get io callback), but usually it faster because of deserealization/cursor optimizations. 
+inflate_dbrefs now $MongoDB::Async::Cursor::inflate_dbrefs global variable
+
+
+This module is 20-100% (in single-(coro)threaded test , mulithreaded will be even faster) faster than original L<MongoDB>. See benchmark L<http://pastebin.com/vFWENzW7> or run benchmark_compare.pl from archive. It might be 1-5% slower than original on many small queries because of overhead to start and get io callback, but usually it faster because of deserealization/cursor optimizations. 
 
 This driver NOT ithreads safe
 
-Please report bugs to I<nyaknyan@gmail.com>
+SASL and SSL unsupported (ssl may work in blocking mode, not tested it)
+
+PLEASE DON'T USE documentation of this module and refere to doc of original MongoDB module with corresponding version. Because I'm porting here only features and too lazy to copy-paste docs.
+
+
+Please report bugs/suggestions to I<nyaknyan@gmail.com> or cpan's RT.
+
+
+TODO:
+
+Make async connection - currently it may block for some time while trying to connect to node which is down.
+
+Implement SSL support using normal SSL module object. 
+
+May (or may not, not tested it) segfault if intesively trying reconnect to servers under heavy load. Fix it.
+
+Minimize Moose usage, because perl isn't C++ or Java and all this getter/setter shit if just slow. 
 
 =head1 VERSION
 
-version 0.503.2
+version 0.702.2
 
 =head1 SYNOPSIS
 

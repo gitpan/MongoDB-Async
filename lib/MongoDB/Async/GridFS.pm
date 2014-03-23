@@ -16,7 +16,7 @@
 
 package MongoDB::Async::GridFS;
 {
-  $MongoDB::Async::GridFS::VERSION = '0.503.2';
+  $MongoDB::Async::GridFS::VERSION = '0.702.2';
 }
 
 
@@ -75,8 +75,8 @@ sub BUILD {
     my ($self) = @_;
    
     # check for the required indexs in the system.indexes colleciton
-    my $count = $self->_database->get_collection('system.indexes')->count({filename => 1});
-    $count   += $self->_database->get_collection('system.indexes')->count({files_id => 1, n => 1});
+    my $count = $self->_database->get_collection('system.indexes')->count({key=>{filename => 1 }});
+    $count   += $self->_database->get_collection('system.indexes')->count({key=>{files_id => 1, n => 1 }});
     
     # if we dont have the required indexes, create them now.
     if ($count < 2){
@@ -219,7 +219,7 @@ sub _calc_md5 {
     my ($self, $id, $root, $retry) = @_;
    
     # Try to get an md5 hash for the file
-    my $result = $self->_database->run_command({"filemd5", $id, "root" => $self->prefix});
+    my $result = $self->_database->run_command([ "filemd5", $id, "root" => $self->prefix ]);
     
     # If we didn't get a hash back, it means something is wrong (probably to do with gridfs's 
     # indexes because its currently the only error that is thown from the md5 class)
@@ -275,7 +275,7 @@ MongoDB::Async::GridFS - A file storage utility
 
 =head1 VERSION
 
-version 0.503.2
+version 0.702.2
 
 =head1 SYNOPSIS
 

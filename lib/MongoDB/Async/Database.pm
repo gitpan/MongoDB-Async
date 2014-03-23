@@ -16,7 +16,7 @@
 
 package MongoDB::Async::Database;
 {
-  $MongoDB::Async::Database::VERSION = '0.503.2';
+  $MongoDB::Async::Database::VERSION = '0.702.2';
 }
 
 
@@ -26,11 +26,17 @@ use Moose;
 use MongoDB::Async::GridFS;
 use Carp 'carp';
 
+{ package MongoDB::Async::GetCollCache; 
+	sub nya {} # Base class package "MongoDB::Async::GetCollCache" is empty.
+};
+
+use base 'MongoDB::Async::GetCollCache';
+
 has _client => ( 
     is       => 'ro',
     isa      => 'MongoDB::Async::MongoClient',
     required => 1,
-);
+); 
 
 has name => (
     is       => 'ro',
@@ -48,7 +54,7 @@ sub AUTOLOAD {
 	
 	my $sub = eval q/ sub {  $_[0]->get_collection('/.$coll.q/') } /;
 	
-	*{$AUTOLOAD} = $sub;
+	*{'MongoDB::Async::GetCollCache::'.$coll} = $sub;
 	
     return $sub->($self);
 }
@@ -60,17 +66,18 @@ use strict;
 sub collection_names {
     my ($self) = @_;
     my $it = $self->get_collection('system.namespaces')->query({});
-    return map {
-        substr($_, length($self->{name}) + 1)
-    } map { $_->{name} } $it->all;
+    return grep { 
+        not ( index( $_, '$' ) >= 0 && index( $_, '.oplog.$' ) < 0 ) 
+    } map { 
+        substr $_->{name}, length( $self->name ) + 1 
+    } $it->all;
 }
 
 
 sub get_collection {
-    my ($self, $collection_name) = @_;
     return MongoDB::Async::Collection->new(
-        _database => $self,
-        name      => $collection_name,
+        _database => $_[0],
+        name      => $_[1],
     );
 }
 
@@ -145,7 +152,7 @@ MongoDB::Async::Database - A Mongo Database
 
 =head1 VERSION
 
-version 0.503.2
+version 0.702.2
 
 =head1 SYNOPSIS
 

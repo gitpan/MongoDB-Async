@@ -39,6 +39,7 @@ typedef __int64 int64_t;
 #include <stdint.h>
 #endif // _MSC_VER
 #endif // WIN32
+#include <limits.h>
 
 // define regex macros for Perl 5.8
 #ifndef RX_PRECOMP
@@ -112,7 +113,13 @@ typedef __int64 int64_t;
 #define BSON_INT 16
 #define BSON_TIMESTAMP 17
 #define BSON_LONG 18
+
+#if CHAR_MIN == 0  // char is unsigned
+#define BSON_MINKEY 255
+#else
 #define BSON_MINKEY -1
+#endif
+
 #define BSON_MAXKEY 127
 
 #define GROW_SLOWLY 1048576
@@ -138,6 +145,7 @@ typedef struct {
   char key_char;
   char looks_like_number;
   char dt_type;
+  char inflate_dbrefs;
 } serialize_bson_flags;
 
 #define EMPTY_STACK 0
@@ -167,7 +175,7 @@ void perl_mongo_make_id(char *id);
 void perl_mongo_make_oid(char* twelve, char *twenty4);
 
 // serialization
-SV *perl_mongo_bson_to_sv (buffer *buf);
+SV *perl_mongo_bson_to_sv (buffer *buf, SV *client );
 void perl_mongo_sv_to_bson (buffer *buf, SV *sv, AV *ids);
 
 int perl_mongo_resize_buf (buffer*, int);
@@ -181,3 +189,4 @@ void perl_mongo_serialize_byte(buffer*, char);
 void perl_mongo_serialize_bytes(buffer*, const char*, unsigned int);
 
 #endif
+

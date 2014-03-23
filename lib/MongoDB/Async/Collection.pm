@@ -16,7 +16,7 @@
 
 package MongoDB::Async::Collection;
 {
-  $MongoDB::Async::Collection::VERSION = '0.503.2';
+  $MongoDB::Async::Collection::VERSION = '0.702.2';
 }
 
 
@@ -27,6 +27,8 @@ use Tie::IxHash;
 use Moose;
 use Carp 'carp';
 use boolean;
+
+use base 'MongoDB::Async::GetCollCache';
 
 has _database => (
     is       => 'ro',
@@ -41,6 +43,7 @@ has name => (
     required => 1,
 );
 
+# MongoDB author, why so oop? Fuck, this is not C++ or Java, all this shit is just slow!
 
 
 sub full_name {
@@ -61,24 +64,27 @@ sub AUTOLOAD {
 	
 	my $sub = eval q/ sub {  $_[0]->{_database}->get_collection('/.$self->{name}.'.'.$coll.q/') } /;
 	
-	# *{$AUTOLOAD} = $sub;
+	*{'MongoDB::Async::GetCollCache::'.$coll} = $sub;
 	
     return $sub->($self);
 }
 use strict;
 
+sub get_collection { 
+	#self, coll
+    return $_[0]->{_database}->get_collection($_[0]->{name}.'.'.$_[1]);
+}
+
 
 sub to_index_string {
     my ($keys) = @_;
 
-    my @name;
-    if (ref $keys eq 'ARRAY' ||
-        ref $keys eq 'HASH' ) {
-
-        while ((my $idx, my $d) = each(%$keys)) {
-            push @name, $idx;
-            push @name, $d;
-        }
+	my @name;
+    if (ref $keys eq 'ARRAY') {
+        @name = @$keys;
+    }
+    elsif (ref $keys eq 'HASH' ) {
+        @name = %$keys
     }
     elsif (ref $keys eq 'Tie::IxHash') {
         my @ks = $keys->Keys;
@@ -120,9 +126,9 @@ sub find {
 
 
 sub find_one {
-    my ($self, $query, $fields) = @_;
+    # my ($self, $query, $fields) = @_;
 
-    return $self->find( $query || {} )->limit(-1)->fields( $fields || {} )->next;
+    return $_[0]->find( $_[1] || {} )->limit(-1)->fields( $_[2] || {} )->next;
 }
 
 
@@ -150,11 +156,12 @@ sub batch_insert {
         Carp::croak("insert is too large: ".length($insert)." max: ".$conn->max_bson_size);
         return 0;
     }
-
-    if (defined($options) && $options->{safe}) {
-        return 0 unless ($self->_make_safe($insert));
+	
+    if ( ( defined($options) && $options->{safe} ) or $conn->_w_want_safe ) {
+	  return 0 unless ($self->_make_safe($insert));
     }
     else {
+		
         $conn->send($insert);
     }
 
@@ -194,7 +201,7 @@ sub update {
 		$flags
 	);
 	
-    return $self->_make_safe($update) if ($opts->{safe});
+    return $self->_make_safe($update) if ($opts->{safe}  or $conn->_w_want_safe  );
 
 
    $conn->send($update);
@@ -208,8 +215,7 @@ sub update {
 sub find_and_modify { 
     my ( $self, $opts ) = @_;
 
-    my $result = $self->{_database}->run_command( { findAndModify => $self->{name}, %$opts } );
-
+    my $result = $self->{_database}->run_command( [ findAndModify => $self->{name}, %$opts ] );
     if ( not $result->{ok} ) { 
         return if ( $result->{errmsg} eq 'No matching object found' );
     }
@@ -222,7 +228,7 @@ sub find_and_modify {
 sub aggregate { 
     my ( $self, $pipeline ) = @_;
 
-    my $result = $self->{_database}->run_command( { aggregate => $self->{name}, pipeline => $pipeline } );
+    my $result = $self->{_database}->run_command( [ aggregate => $self->{name}, pipeline => $pipeline ] );
 
     # TODO: handle errors?
 
@@ -259,7 +265,7 @@ sub remove {
     my ($just_one, $safe);
     if (defined $options && ref $options eq 'HASH') {
         $just_one = exists $options->{just_one} ? $options->{just_one} : 0;
-        $safe = exists $options->{safe} ? $options->{safe} : 0;
+        $safe =  $options->{safe} or $self->{_database}{_client}->_w_want_safe;
     }
     else {
         $just_one = $options || 0;
@@ -297,6 +303,8 @@ sub ensure_index {
         Carp::croak("you're using the old ensure_index format, please upgrade");
     }
 
+	$keys = Tie::IxHash->new(@$keys) if ref $keys eq 'ARRAY';
+	
     my $obj = Tie::IxHash->new(
 		"ns" => $self->{_database}{name}.'.'.$self->{name} ,  
 		"key" => $keys
@@ -315,7 +323,10 @@ sub ensure_index {
         }
     }
     $options->{'no_ids'} = 1;
-
+	
+	if (exists $options->{expire_after_seconds}) {
+        $obj->Push("expireAfterSeconds" => int($options->{expire_after_seconds}));
+    }
 
     return $self->{_database}->get_collection("system.indexes")->insert($obj, $options);
 }
@@ -374,10 +385,10 @@ sub count {
 
     my $obj;
     eval {
-        $obj = $self->{_database}->run_command({
+        $obj = $self->{_database}->run_command([
             count => $self->{name},
             query => ($query || {}),
-        });
+        ]);
     };
 
     # if there was an error, check if it was the "ns missing" one that means the
@@ -399,7 +410,7 @@ sub count {
 sub validate {
     my ($self, $scan_data) = @_;
     $scan_data = 0 unless defined $scan_data;
-    my $obj = $self->{_database}->run_command({ validate => $self->{name} });
+    my $obj = $self->{_database}->run_command([ validate => $self->{name} ]);
 }
 
 
@@ -411,9 +422,11 @@ sub drop_indexes {
 
 sub drop_index {
     my ($self, $index_name) = @_;
-    my $t = tie(my %myhash, 'Tie::IxHash');
-    %myhash = ("deleteIndexes" => $self->{name}, "index" => $index_name);
-    return $self->{_database}->run_command($t);
+	
+	return $self->{_database}->run_command([
+        deleteIndexes => $self->{name},
+        index => $index_name,
+    ]);
 }
 
 
@@ -447,7 +460,7 @@ MongoDB::Async::Collection - A Mongo Collection
 
 =head1 VERSION
 
-version 0.503.2
+version 0.702.2
 
 =head1 SYNOPSIS
 

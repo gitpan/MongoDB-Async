@@ -16,7 +16,7 @@
 
 package MongoDB::Async::BSON;
 {
-  $MongoDB::Async::BSON::VERSION = '0.503.2';
+  $MongoDB::Async::BSON::VERSION = '0.702.2';
 }
 
 
@@ -41,6 +41,9 @@ $MongoDB::Async::BSON::use_binary = 0;
 tie $MongoDB::Async::BSON::dt_type, 'MongoDB::Async::BSON::FlagsCacheRefresher';
 $MongoDB::Async::BSON::dt_type = "DateTime";
 
+
+tie $MongoDB::Async::Cursor::inflate_dbrefs , 'MongoDB::Async::BSON::FlagsCacheRefresher';
+$MongoDB::Async::Cursor::inflate_dbrefs = 1;
 
 {
 package  MongoDB::Async::BSON::FlagsCacheRefresher;
@@ -73,7 +76,7 @@ MongoDB::Async::BSON - Tools for serializing and deserializing data in BSON form
 
 =head1 VERSION
 
-version 0.503.2
+version 0.702.2
 
 =head1 NAME
 
