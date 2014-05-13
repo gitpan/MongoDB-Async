@@ -104,7 +104,9 @@ static mongo_cursor* get_cursor(SV *self) {
          if (mongo_link_say(link, &buf) == -1) {
            croak("can't get db response, not connected");
         }
-		 
+		
+		SvREFCNT_dec(query);
+		
 		mongo_link_hear(self);
 		
 		cursor->started_iterating = 1;

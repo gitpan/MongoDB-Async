@@ -1,3 +1,10 @@
+
+0.702.3
+	Fixed memory leak in cursor when doing queries, thanks Michael Fung for bugreport.
+
+0.702.2
+	Integrated new features from 0.702.2 MongoDB driver release
+
 0.46
 
   [Enhancements]

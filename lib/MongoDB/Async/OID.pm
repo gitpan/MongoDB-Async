@@ -16,7 +16,7 @@
 
 package MongoDB::Async::OID;
 {
-  $MongoDB::Async::OID::VERSION = '0.702.2';
+  $MongoDB::Async::OID::VERSION = '0.702.3';
 }
 
 # ABSTRACT: A Mongo Object ID
@@ -65,7 +65,7 @@ MongoDB::Async::OID - A Mongo Object ID
 
 =head1 VERSION
 
-version 0.702.2
+version 0.702.3
 
 =head1 SYNOPSIS
 

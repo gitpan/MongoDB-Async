@@ -16,7 +16,7 @@
 
 package MongoDB::Async::Collection;
 {
-  $MongoDB::Async::Collection::VERSION = '0.702.2';
+  $MongoDB::Async::Collection::VERSION = '0.702.3';
 }
 
 
@@ -460,7 +460,7 @@ MongoDB::Async::Collection - A Mongo Collection
 
 =head1 VERSION
 
-version 0.702.2
+version 0.702.3
 
 =head1 SYNOPSIS
 

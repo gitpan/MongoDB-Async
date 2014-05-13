@@ -16,7 +16,7 @@
 
 package MongoDB::Async::GridFS::File;
 {
-  $MongoDB::Async::GridFS::File::VERSION = '0.702.2';
+  $MongoDB::Async::GridFS::File::VERSION = '0.702.3';
 }
 
 
@@ -121,7 +121,7 @@ MongoDB::Async::GridFS::File - A Mongo GridFS file
 
 =head1 VERSION
 
-version 0.702.2
+version 0.702.3
 
 =head1 SYNOPSIS
 

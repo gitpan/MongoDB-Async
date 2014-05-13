@@ -16,7 +16,7 @@
 
 package MongoDB::Async::MongoClient;
 {
-  $MongoDB::Async::MongoClient::VERSION = '0.702.2';
+  $MongoDB::Async::MongoClient::VERSION = '0.702.3';
 }
 
 # ABSTRACT: A connection to a Mongo server
@@ -605,7 +605,7 @@ MongoDB::Async::MongoClient - A connection to a Mongo server
 
 =head1 VERSION
 
-version 0.702.2
+version 0.702.3
 
 =head1 SYNOPSIS
 

@@ -16,7 +16,7 @@
 
 package MongoDB::Async::Cursor;
 {
-  $MongoDB::Async::Cursor::VERSION = '0.702.2';
+  $MongoDB::Async::Cursor::VERSION = '0.702.3';
 }
 
 
@@ -324,7 +324,7 @@ MongoDB::Async::Cursor - A cursor/iterator for Mongo query results
 
 =head1 VERSION
 
-version 0.702.2
+version 0.702.3
 
 =head1 SYNOPSIS
 

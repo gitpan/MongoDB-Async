@@ -20,7 +20,7 @@ use warnings;
 
 package MongoDB::Async;
 {
-  $MongoDB::Async::VERSION = '0.702.2';
+  $MongoDB::Async::VERSION = '0.702.3';
 }
 # ABSTRACT: A Mongo Driver for Perl
 
@@ -67,10 +67,11 @@ This module is 20-100% (in single-(coro)threaded test , mulithreaded will be eve
 
 This driver NOT ithreads safe
 
-SASL and SSL unsupported (ssl may work in blocking mode, not tested it)
+SASL and SSL unsupported (ssl may work in blocking mode, not tested it). 
 
 PLEASE DON'T USE documentation of this module and refere to doc of original MongoDB module with corresponding version. Because I'm porting here only features and too lazy to copy-paste docs.
 
+Don't work with this module inside Coro::unblock_sub, it leaks memory. Use separate coro thread to work with database, and if you need callback interface you need to write it yourself.
 
 Please report bugs/suggestions to I<nyaknyan@gmail.com> or cpan's RT.
 
@@ -87,7 +88,7 @@ Minimize Moose usage, because perl isn't C++ or Java and all this getter/setter 
 
 =head1 VERSION
 
-version 0.702.2
+version 0.702.3
 
 =head1 SYNOPSIS
 

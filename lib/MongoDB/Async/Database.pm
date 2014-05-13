@@ -16,7 +16,7 @@
 
 package MongoDB::Async::Database;
 {
-  $MongoDB::Async::Database::VERSION = '0.702.2';
+  $MongoDB::Async::Database::VERSION = '0.702.3';
 }
 
 
@@ -152,7 +152,7 @@ MongoDB::Async::Database - A Mongo Database
 
 =head1 VERSION
 
-version 0.702.2
+version 0.702.3
 
 =head1 SYNOPSIS
 

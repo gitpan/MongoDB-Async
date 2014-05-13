@@ -16,7 +16,7 @@
 
 package MongoDB::Async::BSON;
 {
-  $MongoDB::Async::BSON::VERSION = '0.702.2';
+  $MongoDB::Async::BSON::VERSION = '0.702.3';
 }
 
 
@@ -76,7 +76,7 @@ MongoDB::Async::BSON - Tools for serializing and deserializing data in BSON form
 
 =head1 VERSION
 
-version 0.702.2
+version 0.702.3
 
 =head1 NAME
 

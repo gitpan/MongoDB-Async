@@ -16,7 +16,7 @@
 
 package MongoDB::Async::DBRef;
 {
-  $MongoDB::Async::DBRef::VERSION = '0.702.2';
+  $MongoDB::Async::DBRef::VERSION = '0.702.3';
 }
 
 # ABSTRACT: Native DBRef support
@@ -125,7 +125,7 @@ MongoDB::Async::DBRef - Native DBRef support
 
 =head1 VERSION
 
-version 0.702.2
+version 0.702.3
 
 =head1 SYNOPSIS
 

@@ -8,6 +8,7 @@ perl_version '5.8.4';
 author 'Florian Ragwitz <rafl@debian.org>';
 author 'Kristina Chodorow <kristina@10gen.com>';
 author 'Mike Friedman <mike.friedman@10gen.com>';
+author 'Ivan Ratnikov <nyaknyan@gmail.com>';
 license 'Apache';
 all_from 'lib/MongoDB/Async.pm';
 
